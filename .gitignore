@@ -4,3 +4,5 @@ __pycache__/
 data/harvest/
 *.duckdb
 *.duckdb.wal
+node_modules/
+db/
