@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/codd.svg" alt="CODD AI logo: a red cod with white bar-chart stripes" width="240">
+<img src="assets/codd.svg" alt="CODD AI logo: a friendly red cod with white bar-chart stripes" width="260">
 
 # CODD AI
 
