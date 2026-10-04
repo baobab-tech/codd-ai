@@ -55,7 +55,7 @@ pnpm digest                  # landscape digest to stdout
 
 ## The database
 
-All state lives in one DuckDB file, `db/codd.duckdb`. It is not committed. It is published as an asset on the [`db-latest` release](../../releases/tag/db-latest), with a dated `db-YYYYMMDD-HHMM` release kept for each snapshot.
+All state lives in one DuckDB file, `db/codd.duckdb`. It is not committed. It is published as an asset on the [`db-latest` release](../../releases/tag/db-latest), with a dated `db-YYYYMMDD-HHMMSS` release kept for each snapshot.
 
 | Table | Holds |
 |---|---|

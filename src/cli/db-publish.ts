@@ -24,7 +24,7 @@ for (const t of TABLES) counts[t] = Number((await all<{ n: number }>(conn, `sele
 await closeDb(conn);
 
 const now = new Date();
-const tag = `db-${now.toISOString().slice(0, 16).replace(/[-:]/g, "").replace("T", "-")}`;
+const tag = `db-${now.toISOString().slice(0, 19).replace(/[-:]/g, "").replace("T", "-")}`;
 const manifest = { tag, published_at: now.toISOString(), git_sha: execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim(), note, counts };
 writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + "\n");
 await pipeline(createReadStream(DB_PATH), createGzip({ level: 9 }), createWriteStream(ASSET));

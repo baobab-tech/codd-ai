@@ -8,7 +8,7 @@ Paused 2026-10-04. Start with `pnpm install && pnpm db:pull`.
 - One DuckDB file (`db/codd.duckdb`, gitignored) is the source of truth for all state: registry, status, probes, and later the harvest. Git holds code and docs only.
 - The DB is published separately from commits, as GitHub release assets:
   - `pnpm db:pull [tag]` downloads `db-latest`, or a dated tag, into `db/`. The previous local copy is kept as `db/codd.duckdb.bak`. Run it before starting work.
-  - `pnpm db:publish -m "note"` checkpoints, gzips, and uploads. It replaces the asset on the rolling `db-latest` release and creates a dated `db-YYYYMMDD-HHMM` snapshot release, with table row counts in the notes.
+  - `pnpm db:publish -m "note"` checkpoints, gzips, and uploads. It replaces the asset on the rolling `db-latest` release and creates a dated `db-YYYYMMDD-HHMMSS` snapshot release, with table row counts in the notes.
   - One writer at a time: the last publish wins, and nothing is merged.
   - `pnpm db:export` / `pnpm db:import` are optional. They round-trip the small tables through `registry/*.jsonl` when a readable diff is wanted.
 - The model keeps three layers apart: org → source (catalog / portal scope / document library / API) → connector (one per platform, shared across sources). Dataset and resource records come later. Expect to iterate on this as we explore.
