@@ -1,43 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="70 100 400 290" role="img" aria-labelledby="t">
-  <title id="t">CODD AI: a cod whose body is a bar chart</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 180 384 152" role="img" aria-labelledby="t">
+  <title id="t">CODD AI: a red cod with white bar-chart stripes</title>
   <defs>
-    <clipPath id="body">
-      <path d="M96 262 C118 212 190 188 272 194 C334 198 372 222 392 246 L392 270 C372 294 334 314 272 318 C190 322 120 304 96 262 Z"/>
-    </clipPath>
+    <clipPath id="body"><path d="M96 262 C118 212 190 188 272 194 C334 198 372 222 392 246 L392 270 C372 294 334 314 272 318 C190 322 120 304 96 262 Z"/></clipPath>
   </defs>
-
-  <g fill="#6E7F45" stroke="#26331F" stroke-width="7" stroke-linejoin="round">
-    <!-- tail -->
-    <path d="M384 246 L452 196 Q440 256 452 318 L384 270 Z"/>
-    <!-- three dorsal fins, two anal fins, pelvic fin -->
-    <path d="M180 214 Q186 132 242 200 Z"/>
-    <path d="M244 200 Q262 118 310 206 Z"/>
-    <path d="M312 210 Q340 146 368 228 Z"/>
-    <path d="M258 312 Q272 376 318 304 Z"/>
-    <path d="M324 300 Q344 356 370 282 Z"/>
-    <path d="M160 298 Q152 334 190 312 Z"/>
+  <path d="M384 246 L452 196 Q440 256 452 318 L384 270 Z" fill="#D80621"/>
+  <path d="M96 262 C118 212 190 188 272 194 C334 198 372 222 392 246 L392 270 C372 294 334 314 272 318 C190 322 120 304 96 262 Z" fill="#D80621"/>
+  <g clip-path="url(#body)" fill="#FFFFFF">
+    <rect x="200" y="222" width="174" height="8" rx="4"/>
+    <rect x="168" y="246" width="206" height="8" rx="4"/>
+    <rect x="214" y="270" width="160" height="8" rx="4"/>
   </g>
-
-  <!-- body: green, with horizontal bars of different lengths -->
-  <path d="M96 262 C118 212 190 188 272 194 C334 198 372 222 392 246 L392 270 C372 294 334 314 272 318 C190 322 120 304 96 262 Z" fill="#8FA35E"/>
-  <g clip-path="url(#body)">
-    <rect x="232" y="190" width="170" height="22" fill="#5FB3C9"/>
-    <rect x="182" y="216" width="220" height="20" fill="#2C6E91"/>
-    <rect x="158" y="240" width="244" height="20" fill="#D80621"/>
-    <rect x="196" y="264" width="206" height="20" fill="#F2B134"/>
-    <rect x="252" y="288" width="150" height="34" fill="#F3EAD0"/>
-  </g>
-  <path d="M96 262 C118 212 190 188 272 194 C334 198 372 222 392 246 L392 270 C372 294 334 314 272 318 C190 322 120 304 96 262 Z" fill="none" stroke="#26331F" stroke-width="7" stroke-linejoin="round"/>
-
-  <!-- gill, mouth, chin barbel -->
-  <g fill="none" stroke="#26331F" stroke-linecap="round">
-    <path d="M150 222 Q136 262 152 300" stroke-width="6"/>
-    <path d="M98 266 Q112 274 126 268" stroke-width="5"/>
-    <path d="M128 296 Q132 314 122 326" stroke-width="5"/>
-  </g>
-
-  <!-- eye -->
-  <circle cx="124" cy="246" r="14" fill="#FFFFFF" stroke="#26331F" stroke-width="5"/>
-  <circle cx="120" cy="246" r="7" fill="#26331F"/>
-  <circle cx="117" cy="242" r="2.5" fill="#FFFFFF"/>
+  <circle cx="122" cy="246" r="8" fill="#FFFFFF"/>
 </svg>
