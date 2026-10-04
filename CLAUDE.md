@@ -1,6 +1,6 @@
 # CODD AI
 
-Registry, connectors and (later) an MCP server over the portals in the Canadian Open Data Directory. Public repo, MIT licensed, built by Baobab Tech with the Canada Open Data Society. TypeScript (Node 22, pnpm, tsx); state lives in one DuckDB file.
+Registry, connectors and (later) an MCP server over the portals in the Canadian Open Data Directory. Public repo, MIT licensed, built by Baobab Tech with the Canadian Open Data Society. TypeScript (Node 22, pnpm, tsx); state lives in one DuckDB file.
 
 ## Start of session
 

@@ -26,7 +26,7 @@ A registry, connectors and an MCP server so AI agents can find and query the ope
 
 ---
 
-Built in collaboration with the [Canada Open Data Society](https://opendatasociety.ca). [Baobab Tech](https://baobabtech.ai), a corporate member of the Society, is providing technical leadership for this project. Code is MIT licensed.
+Built in collaboration with the [Canadian Open Data Society](https://opendatasociety.ca). [Baobab Tech](https://baobabtech.ai), a corporate member of the Society, is providing technical leadership for this project. Code is MIT licensed.
 
 ## The problem
 
@@ -129,4 +129,4 @@ Only the directory sync is specific to this directory. [REUSE.md](REUSE.md) expl
 
 Code: [MIT](LICENSE), © 2026 Baobab Tech.
 
-`data/directory/` holds a snapshot of the Canadian Open Data Directory, maintained by the Canada Open Data Society. Datasets reached through the connectors stay under their publishers' own licences.
+`data/directory/` holds a snapshot of the Canadian Open Data Directory, maintained by the Canadian Open Data Society. Datasets reached through the connectors stay under their publishers' own licences.
