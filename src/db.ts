@@ -126,7 +126,7 @@ create table if not exists findings (
   subject_id varchar,
   finding varchar not null,        -- one fact, written to be quoted in a report
   evidence varchar,                -- URL, SQL query, or probe reference
-  author varchar,                  -- probe | claude | olivier
+  author varchar,                  -- probe | claude | maintainer handle
   created_at timestamp default now()
 );
 

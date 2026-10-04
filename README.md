@@ -1,24 +1,98 @@
 # CODD AI
 
-Canada Open Data Directory AI: a registry, connectors, and an MCP server over the portals listed in the [Canadian Open Data Directory](https://directory.opendatasociety.ca/directory) (253 organizations, ~104k datasets).
+Canada Open Data Directory AI. A registry, a set of connectors, and (in progress) an MCP server that let AI agents find and query the datasets behind the [Canadian Open Data Directory](https://directory.opendatasociety.ca/directory).
 
-## Layout
+Built in collaboration with the Canada Open Data Society. [Baobab Tech](https://baobabtech.ai), a corporate member of the Society, develops and provides it at no cost. Code is MIT licensed.
 
-- `src/db.ts` — DuckDB schema: orgs, sources, org_sources, connectors, open_items, observations, probes
-- `src/cli/` — sync, probe, and DB publish/pull commands
-- `data/directory/` — raw CSV snapshot of the directory
-- `docs/PLAN.md` — data model, storage, connectors, pipeline
-- `NEXT.md` — where work left off
-- `CLAUDE.md` — session conventions: record findings, generate reports
-- `reports/` — digests and landscape reports
+## The problem
 
-## Usage
+The directory lists 253 Canadian organizations that publish open data: municipalities, provinces, federal agencies, universities, non-profits. Together they report about 105k datasets. The directory itself holds no datasets. Each entry points to a portal, and the portals vary widely:
 
-The DuckDB file is not in git. It is published as a GitHub release asset (`db-latest` plus dated `db-*` snapshots).
+- **Catalog platforms with APIs:** CKAN, ArcGIS Hub, Socrata, Opendatasoft, Dataverse, GeoNetwork.
+- **Bespoke APIs:** Statistics Canada WDS, Bank of Canada Valet, city-built portals.
+- **Esri map servers** with no catalog in front of them.
+- **Static web pages** linking ZIPs, CSVs and PDFs.
+- **Dead links, bot walls, and sites that need a browser.**
+
+An agent can't use "the directory" directly. It needs to know, for each source, how to list what is there and how to get at the data.
+
+## How it works
+
+```
+directory ──sync──▶ orgs ──probe──▶ sources ──profile──▶ curated sources ──harvest──▶ datasets/resources ──▶ MCP
+                      │                │                       │
+                      └── org_overrides└── observations, open_items, findings (landscape analysis)
+```
+
+1. **Sync** (`pnpm sync`). The directory has no API. Its org list is a CSV embedded in the site's JS bundle. The sync walks the bundle, extracts the CSV, and loads it into `orgs` unchanged. Our corrections live in `org_overrides`, never in `orgs`.
+2. **Probe** (`pnpm probe`). For each org URL: reachability, redirects, TLS, bot-protection signatures, and robots.txt rules for AI crawlers. Then it fingerprints the platform through its API, not the HTML. The result is a `sources` row (platform, API base, scope inside a shared portal, live dataset count). Problems become `open_items`.
+3. **Profile** (`pnpm profile-source`). Sources the probe can't identify are profiled by hand or by an agent into an archetype: `platform_api`, `known_api`, `esri_rest`, `web_listing`, `js_app`, `document_library` or `not_data`. A `recipe` (JSON) records how to connect. Profiled sources are marked `curated`, and the probe never overwrites them.
+4. **Harvest** (next). One connector per platform or archetype lists datasets and resources into the database. Each resource gets a tier: live query, tabular file, geo file, document, or link only.
+5. **MCP** (planned). A TypeScript MCP server for searching datasets, inspecting them, and querying resources, either live through the source API or through DuckDB over a downloaded file.
+
+The detailed design is in [docs/PLAN.md](docs/PLAN.md).
+
+### Landscape analysis
+
+Every step records what it learns about how agent-friendly Canadian open data is:
+
+- `observations`: structured facts per org (access, robots.txt, API, landing page).
+- `findings`: narrative discoveries, one quotable fact each, added with `pnpm note`.
+- `open_items`: blockers, dead links, wrong directory labels, sources still to profile.
+
+`pnpm digest` collects all of it into one markdown file, the input for a one-page landscape report. See [reports/](reports/).
+
+## Getting started
+
+Requires Node 22+, pnpm, and the GitHub CLI (`gh`) for downloading the database.
 
 ```bash
 pnpm install
-pnpm db:pull          # fetch the latest published DB
-pnpm sync             # re-pull the directory into orgs
-pnpm db:publish -m "what changed"
+pnpm db:pull                 # download the latest published database
+pnpm sql "select platform, count(*) from sources group by 1"
+pnpm digest                  # landscape digest to stdout
 ```
+
+## The database
+
+All state lives in one DuckDB file, `db/codd.duckdb`. It is not committed. It is published as an asset on the [`db-latest` release](../../releases/tag/db-latest), with a dated `db-YYYYMMDD-HHMM` release kept for each snapshot.
+
+| Table | Holds |
+|---|---|
+| `orgs` | The directory, as published |
+| `org_overrides` | Our corrections to directory fields, with reasons |
+| `sources` / `org_sources` | How to connect to each data source, and which orgs it serves |
+| `connectors` | Access methods, shared across sources |
+| `observations` | Structured facts from probing |
+| `findings` | Narrative discoveries |
+| `open_items` | Work queue |
+| `probes` | Raw HTTP evidence |
+
+Maintainers publish with `pnpm db:publish -m "what changed"`. Only one person or session should write at a time.
+
+## Commands
+
+| Command | Does |
+|---|---|
+| `pnpm sync` | Re-pull the directory into `orgs` |
+| `pnpm probe [--only id,id]` | Probe org URLs and fingerprint platforms |
+| `pnpm profile-source <org> ...` | Record a profiled (curated) source |
+| `pnpm note "..."` / `pnpm note --list` | Record or list findings |
+| `pnpm digest [--out file]` | Landscape digest |
+| `pnpm sql "..."` | Ad-hoc SQL against the database |
+| `pnpm db:pull` / `pnpm db:publish` | Download / publish the database |
+| `pnpm db:export` / `pnpm db:import` | Optional JSONL copy of the small tables, for readable diffs |
+
+## Crawling etiquette
+
+The probe sends requests to a host one at a time, 500 ms apart, with a `codd-ai` user agent that links to this repository. A browser user agent is used only to test whether a block depends on the user agent, and that result is recorded. We read robots.txt and record its rules. Whether a robots.txt `Disallow` should apply to documented public APIs is an open question, tracked in `open_items`.
+
+## Status
+
+Early. Directory sync, probing and profiling work. Connectors, harvesting and the MCP server are next. [NEXT.md](NEXT.md) is the working log and has the current to-do list.
+
+## Licence
+
+Code: [MIT](LICENSE), © 2026 Baobab Tech.
+
+`data/directory/` holds a snapshot of the Canadian Open Data Directory, maintained by the Canada Open Data Society. Datasets reached through the connectors stay under their publishers' own licences.

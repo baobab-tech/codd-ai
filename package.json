@@ -1,6 +1,14 @@
 {
   "name": "codd-ai",
+  "version": "0.1.0",
   "private": true,
+  "description": "Canada Open Data Directory AI: registry, connectors and MCP over the portals in the Canadian Open Data Directory",
+  "license": "MIT",
+  "author": "Baobab Tech",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/baobab-tech/codd-ai"
+  },
   "type": "module",
   "engines": {
     "node": ">=22"

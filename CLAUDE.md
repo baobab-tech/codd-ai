@@ -25,7 +25,7 @@ Tables, by purpose (schema in `src/db.ts`):
 
 ## Record what you learn
 
-Anything discovered in a session that a landscape report should mention goes into `findings`, before the session ends. This covers: how a portal really works, a blocker, a data-quality problem, a count that surprised us, an access pattern, a decision Olivier made. One fact per finding, written so it can be quoted.
+Anything discovered in a session that a landscape report should mention goes into `findings`, before the session ends. This covers: how a portal really works, a blocker, a data-quality problem, a count that surprised us, an access pattern, a decision the maintainers made. One fact per finding, written so it can be quoted.
 
 ```bash
 pnpm note --topic <topic> --subject <type:id> --evidence <url|query> "One fact."
@@ -63,4 +63,4 @@ Follow the writing style in the user's global CLAUDE.md.
 
 ## Etiquette when probing
 
-Requests to a host go one at a time, 500 ms apart, with a `codd-ai` user agent. A browser user agent is used only to test whether a block depends on the user agent, and the result is recorded. Ask Olivier before any new bulk crawl.
+Requests to a host go one at a time, 500 ms apart, with a `codd-ai` user agent. A browser user agent is used only to test whether a block depends on the user agent, and the result is recorded. Ask the maintainer before any new bulk crawl.

@@ -43,12 +43,12 @@ needs_profiling 42 · dead_link 11 (Regina resolved) · platform_mismatch 12 · 
 
 ## Next steps
 
-1. Logic changes from the pilot, pending Olivier's OK:
+1. Logic changes from the pilot, pending maintainer review:
    - add GeoNetwork (`/geonetwork/srv/api/site`, CSW hits) and ArcGIS Server (`/arcgis/rest/services?f=json`) to the probe fingerprints;
    - stop using the PDF-link count to decide "document_library" (PDFs are often metadata sidecars);
    - add a "follow one dataset page" step to the auto-profile, which is how Red Deer's API was found.
    Then run the auto-profile on the remaining 37 `needs_profiling` sources.
-2. Review with Olivier, gradually:
+2. Review with the maintainers, gradually:
    - the 42 `needs_profiling` sources, starting with the big ones (StatCan, Marine Data BC GeoNetwork, NWT Geomatics, CIHI, Surrey, Hamilton);
    - the 12 dead links: find the new URLs or mark them `wontfix`;
    - whether to respect robots.txt `Disallow: /` for API endpoints (the Dataverse defaults).
