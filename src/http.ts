@@ -58,6 +58,8 @@ export async function fetchText(url: string, opts: { ua?: string; timeoutMs?: nu
 
 function detectBlock(status: number, h: Record<string, string>, body: string): string | null {
   const head = body.slice(0, 20_000);
+  // AWS WAF bot control answers 202 with an empty challenge page (seen on donneesquebec.ca under bursts).
+  if (status === 202 && (/awselb/.test(h["server"] ?? "") || h["x-amzn-waf-action"])) return "aws_waf_challenge";
   if (h["cf-mitigated"] === "challenge" || /cdn-cgi\/challenge-platform|Just a moment\.\.\./.test(head)) return "cloudflare_challenge";
   if (/_Incapsula_Resource|incap_ses/.test(head) || h["x-iinfo"]) return status >= 400 || head.length < 5000 ? "imperva" : null;
   if (/akamai/i.test(h["server"] ?? "") && status === 403) return "akamai_403";

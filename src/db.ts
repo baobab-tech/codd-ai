@@ -3,6 +3,10 @@ import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import pLimit from "p-limit";
+
+// One connection is shared by concurrent tasks; DuckDB statements on it must not overlap.
+const serial = pLimit(1);
 
 export const ROOT = new URL("..", import.meta.url).pathname;
 export const DB_PATH = process.env.CODD_DB ?? join(ROOT, "db/codd.duckdb");
@@ -54,6 +58,8 @@ create table if not exists sources (
   notes varchar
 );
 
+alter table sources add column if not exists parent_id varchar;  -- portal_scope -> its portal
+
 create table if not exists org_sources (
   org_id varchar,
   source_id varchar,
@@ -76,7 +82,7 @@ create table if not exists open_items (
   kind varchar not null,           -- blocker | dead_link | unknown_platform | platform_mismatch | data_error | needs_profiling | question | decision
   subject_type varchar not null,   -- org | source | connector | project
   subject_id varchar,
-  status varchar not null,         -- open | resolved | wontfix
+  status varchar not null,         -- open | stale (auto-cleared, not seen on last probe) | resolved | wontfix
   title varchar not null,
   detail varchar,
   resolution varchar,
@@ -123,17 +129,20 @@ export async function db(): Promise<DuckDBConnection> {
 }
 
 export async function all<T = Record<string, unknown>>(conn: DuckDBConnection, sql: string, params?: Record<string, unknown>): Promise<T[]> {
-  const r = await conn.runAndReadAll(sql, params as never);
-  return r.getRowObjectsJson() as T[];
+  return serial(async () => (await conn.runAndReadAll(sql, params as never)).getRowObjectsJson() as T[]);
 }
 
 /** Insert-or-replace full rows via a temp NDJSON file, so nulls and nested JSON need no per-column binding. */
 export async function upsert(conn: DuckDBConnection, table: string, rows: object[]): Promise<void> {
   if (!rows.length) return;
+  return serial(() => upsertNow(conn, table, rows));
+}
+
+async function upsertNow(conn: DuckDBConnection, table: string, rows: object[]): Promise<void> {
   const file = join(tmpdir(), `codd-${table}-${randomUUID()}.jsonl`);
   writeFileSync(file, rows.map((r) => JSON.stringify(r)).join("\n") + "\n");
   try {
-    const cols = await all<{ name: string; type: string }>(conn, `select column_name as name, data_type as type from information_schema.columns where table_name = '${table}' order by ordinal_position`);
+    const cols = (await conn.runAndReadAll(`select column_name as name, data_type as type from information_schema.columns where table_name = '${table}' order by ordinal_position`)).getRowObjectsJson() as { name: string; type: string }[];
     // Read every column as JSON/VARCHAR-safe text, then let the INSERT cast to the table type.
     const spec = cols.map((c) => `'${c.name}': '${c.type === "JSON" ? "JSON" : "VARCHAR"}'`).join(", ");
     const select = cols.map((c) => `"${c.name}"::${c.type} as "${c.name}"`).join(", ");
@@ -157,7 +166,8 @@ export async function openItem(conn: DuckDBConnection, item: OpenItem): Promise<
   const id = [item.kind, item.subject_id ?? "project", item.key].filter(Boolean).join(":");
   const existing = await all<{ status: string; created_at: string }>(conn, `select status, created_at::varchar as created_at from open_items where id = $id`, { id });
   const now = new Date().toISOString();
-  if (existing[0] && existing[0].status !== "open") return;
+  // Human decisions (resolved/wontfix) stick; "stale" items were auto-cleared by a re-probe and can reopen.
+  if (existing[0] && !["open", "stale"].includes(existing[0].status)) return;
   const created_at = existing[0]?.created_at ?? now;
   await upsert(conn, "open_items", [
     { id, kind: item.kind, subject_type: item.subject_type, subject_id: item.subject_id, status: "open", title: item.title, detail: item.detail ?? null, resolution: null, created_at, updated_at: now },

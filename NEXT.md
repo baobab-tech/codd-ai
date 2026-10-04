@@ -21,12 +21,27 @@ Paused 2026-10-04. Start with `pnpm install && pnpm db:pull`.
 - Schema in `src/db.ts`. HTTP helper with bot-block detection in `src/http.ts`.
 - First DB published: `db-20261004-1706` (253 orgs, other tables empty).
 
+- `pnpm probe` fingerprints every org URL. Results go to `probes`, `sources`, `org_sources`, `observations` and `open_items`. First full run: 2026-10-04. Findings are in `docs/LANDSCAPE.md`.
+- `pnpm sql "<query>"` runs ad-hoc queries.
+
+## Probe behaviour
+
+- Requests to one host run one at a time, 500 ms apart. Up to 8 orgs are probed in parallel.
+- A WAF challenge (AWS 202, Cloudflare) gets a 10 s pause and a retry, then a retry with a browser UA. `blocker` is opened only when no API answers either.
+- `API_HOME` in `src/cli/probe.ts` maps front-end URLs to their API host (open.canada.ca, Toronto).
+- Re-probing an org marks its previous auto-generated items `stale`. They reopen if the problem is seen again. Items set to `resolved` or `wontfix` are left alone.
+
+## Open items (2026-10-04)
+
+needs_profiling 42 · dead_link 12 · platform_mismatch 12 · data_error 2 (Calgary no URL, Shawinigan wrong URL) · blocker 1 (CSA TLS)
+
 ## Next steps
 
-1. Write `src/cli/probe.ts`. For each org URL: GET the root, fetch robots.txt once per host, and fingerprint the platform via its API (CKAN `status_show`/`package_search?rows=0`, ArcGIS Hub `/api/search/v1`, Socrata `/api/catalog/v1`, ODS `/api/explore/v2.1`, Dataverse `/api/search`, `/data.json`). Write `probes` and `sources`/`org_sources`, and open items for blocks, dead links, mismatches and unknowns. If a site blocks the default UA, retry with a browser UA and record that it did.
-2. Review the probe results with Olivier, going through them gradually. Flag blockers.
-3. Collapse the 45 "published under" orgs onto their parent sources (Données Québec, Columbia Basin Water Hub, …).
-4. Seed `connectors` and build the CKAN connector first.
-5. Profile the odd sources (PDF libraries, websites) one at a time with Olivier.
-
-Known data errors: Calgary has no URL (should be data.calgary.ca, Socrata). Shawinigan's URL points to Rouyn-Noranda. See also `docs/PLAN.md`.
+1. Review with Olivier, gradually:
+   - the 42 `needs_profiling` sources, starting with the big ones (StatCan, Marine Data BC GeoNetwork, NWT Geomatics, CIHI, Surrey, Hamilton);
+   - the 12 dead links: find the new URLs or mark them `wontfix`;
+   - whether to respect robots.txt `Disallow: /` for API endpoints (the Dataverse defaults).
+2. Collapse the "published under" orgs. Données Québec is already scoped by CKAN `organization:`. Columbia Basin Water Hub, Niagara, Data Zone and Durham still need checking.
+3. Add the CanWIN count check: are its 48k records really datasets?
+4. Build the CKAN connector and harvest into `datasets` / `resources` tables. CKAN covers about 46 orgs.
+5. Build the ArcGIS Hub connector next (132 orgs), then Socrata, Dataverse and ODS.
