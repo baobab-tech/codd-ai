@@ -64,7 +64,6 @@ Everything lives in one DuckDB file, published as a GitHub release (`pnpm db:pul
 | `observations` | **Landscape facts**, one value per (subject, key): `access` (status, redirects, TLS, latency, bot block), `robots` (AI agent rules), `landing` (title, generator, file-link counts), `api` (what answered), `html_blocked_api_ok`, `rate_challenge`. | probe, profiling |
 | `open_items` | **Work queue**: blockers, dead links, platform mismatches, data errors, needs-profiling, questions. Auto items go `stale` when a re-probe no longer sees them; `resolved` / `wontfix` with a resolution are ours and stick. | probe, us |
 | `probes` | Raw evidence: every request, status, timing, block signature, parsed result. | probe |
-
 | `findings` | **Narrative discoveries** from sessions, append-only, one quotable fact each (`pnpm note`). | claude, us |
 
 `pnpm digest` collects aggregates, observations, open items and findings into one markdown input. A session writes the one-page report from it (see CLAUDE.md).
