@@ -1,27 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 280" role="img" aria-labelledby="t">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="70 100 400 290" role="img" aria-labelledby="t">
   <title id="t">CODD AI: a cod whose body is a bar chart</title>
   <defs>
     <clipPath id="body">
-      <path d="M52 140 C92 62 250 50 356 112 L356 168 C250 230 92 218 52 140 Z"/>
+      <path d="M96 262 C118 212 190 188 272 194 C334 198 372 222 392 246 L392 270 C372 294 334 314 272 318 C190 322 120 304 96 262 Z"/>
     </clipPath>
   </defs>
 
-  <!-- tail and dorsal fin -->
-  <path d="M346 140 L446 76 Q424 140 446 204 Z" fill="#2C6E91" stroke="#1D2B33" stroke-width="8" stroke-linejoin="round"/>
-  <path d="M180 76 Q228 22 286 84 Z" fill="#2C6E91" stroke="#1D2B33" stroke-width="8" stroke-linejoin="round"/>
-
-  <!-- body: horizontal bars of different lengths -->
-  <path d="M52 140 C92 62 250 50 356 112 L356 168 C250 230 92 218 52 140 Z" fill="#EEF3F6"/>
-  <g clip-path="url(#body)">
-    <rect x="214" y="66"  width="152" height="26" fill="#8FA35E"/>
-    <rect x="158" y="96"  width="208" height="26" fill="#2C6E91"/>
-    <rect x="134" y="126" width="232" height="26" fill="#D80621"/>
-    <rect x="176" y="156" width="190" height="26" fill="#F2B134"/>
-    <rect x="246" y="186" width="120" height="30" fill="#5FB3C9"/>
+  <g fill="#6E7F45" stroke="#26331F" stroke-width="7" stroke-linejoin="round">
+    <!-- tail -->
+    <path d="M384 246 L452 196 Q440 256 452 318 L384 270 Z"/>
+    <!-- three dorsal fins, two anal fins, pelvic fin -->
+    <path d="M180 214 Q186 132 242 200 Z"/>
+    <path d="M244 200 Q262 118 310 206 Z"/>
+    <path d="M312 210 Q340 146 368 228 Z"/>
+    <path d="M258 312 Q272 376 318 304 Z"/>
+    <path d="M324 300 Q344 356 370 282 Z"/>
+    <path d="M160 298 Q152 334 190 312 Z"/>
   </g>
-  <path d="M52 140 C92 62 250 50 356 112 L356 168 C250 230 92 218 52 140 Z" fill="none" stroke="#1D2B33" stroke-width="8" stroke-linejoin="round"/>
+
+  <!-- body: green, with horizontal bars of different lengths -->
+  <path d="M96 262 C118 212 190 188 272 194 C334 198 372 222 392 246 L392 270 C372 294 334 314 272 318 C190 322 120 304 96 262 Z" fill="#8FA35E"/>
+  <g clip-path="url(#body)">
+    <rect x="232" y="190" width="170" height="22" fill="#5FB3C9"/>
+    <rect x="182" y="216" width="220" height="20" fill="#2C6E91"/>
+    <rect x="158" y="240" width="244" height="20" fill="#D80621"/>
+    <rect x="196" y="264" width="206" height="20" fill="#F2B134"/>
+    <rect x="252" y="288" width="150" height="34" fill="#F3EAD0"/>
+  </g>
+  <path d="M96 262 C118 212 190 188 272 194 C334 198 372 222 392 246 L392 270 C372 294 334 314 272 318 C190 322 120 304 96 262 Z" fill="none" stroke="#26331F" stroke-width="7" stroke-linejoin="round"/>
+
+  <!-- gill, mouth, chin barbel -->
+  <g fill="none" stroke="#26331F" stroke-linecap="round">
+    <path d="M150 222 Q136 262 152 300" stroke-width="6"/>
+    <path d="M98 266 Q112 274 126 268" stroke-width="5"/>
+    <path d="M128 296 Q132 314 122 326" stroke-width="5"/>
+  </g>
 
   <!-- eye -->
-  <circle cx="98" cy="128" r="14" fill="#FFFFFF" stroke="#1D2B33" stroke-width="6"/>
-  <circle cx="94" cy="128" r="6" fill="#1D2B33"/>
+  <circle cx="124" cy="246" r="14" fill="#FFFFFF" stroke="#26331F" stroke-width="5"/>
+  <circle cx="120" cy="246" r="7" fill="#26331F"/>
+  <circle cx="117" cy="242" r="2.5" fill="#FFFFFF"/>
 </svg>

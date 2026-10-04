@@ -26,7 +26,7 @@ A registry, connectors and an MCP server so AI agents can find and query the ope
 
 ---
 
-Built in collaboration with the [Canada Open Data Society](https://opendatasociety.ca). [Baobab Tech](https://baobabtech.ai), a corporate member of the Society, develops and provides it at no cost. Code is MIT licensed.
+Built in collaboration with the [Canada Open Data Society](https://opendatasociety.ca). [Baobab Tech](https://baobabtech.ai), a corporate member of the Society, is providing technical leadership for this project. Code is MIT licensed.
 
 ## The problem
 
