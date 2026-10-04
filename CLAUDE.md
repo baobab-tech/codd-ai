@@ -38,6 +38,21 @@ Also: corrections → `org_overrides`; anything unresolved → `open_items`; how
 
 pnpm reserves some script names (`import`, `profile`, ...). Check with `pnpm <name>` before adding a script.
 
+## Who decides what: the review queue
+
+`open_items.kind` routes work:
+
+| Kind | Who | Examples |
+|---|---|---|
+| `needs_review` | A Claude session can verify and close it: check the API, write the `recipe`, set `status='harvestable'` with `pnpm profile-source`, then `pnpm items resolve <id> "..."`. If it is still unclear after checking, re-open it as `needs_human` with the question. | JSON API found, file listing to confirm, JS app to inspect with the browser, org to find inside a shared portal |
+| `needs_human` | A person. **Claude must not resolve these.** Present them to the user as questions, with the evidence, and record the answer (`pnpm items resolve`, plus `pnpm note --topic decisions`). | Document libraries (ingest, look elsewhere, or skip?), pages with no data found, which ArcGIS Server folders are open data, unreachable sites |
+| `decision` | A person: a project-level policy question. | Whether robots.txt applies to public APIs |
+| `blocker`, `dead_link`, `data_error`, `platform_mismatch` | Probe-generated facts. A session may fix them (overrides, profiling) and resolve them. | |
+
+Rule of thumb: anything that is not clearly a data catalog, an API or a list of data files goes to a person. That includes documents, an ambiguous scope (which folders or org filter), and anything with licensing or "should this be public" implications.
+
+`pnpm items [kind]` lists open items. `pnpm items resolve|wontfix <id> "why"` closes one.
+
 ## Writing the landscape report
 
 When asked for a report:
@@ -55,6 +70,8 @@ Follow the writing style in the user's global CLAUDE.md.
 | `pnpm sync` | Re-pull the directory into `orgs` |
 | `pnpm probe [--only id,id]` | Fingerprint org URLs → `sources`, `observations`, `open_items`, `probes` |
 | `pnpm note` | Record or list findings |
+| `pnpm autoprofile [--only ...] [--dry-run]` | Profile `needs_profiling` sources and route each to applied / needs_review / needs_human |
+| `pnpm items [kind]` / `pnpm items resolve <id> "why"` | Work queue |
 | `pnpm profile-source <org> --id --archetype --base-url [...]` | Record a profiled source (curated; the probe won't overwrite it) and close its needs_profiling item |
 | `pnpm digest` | Report input digest |
 | `pnpm sql "..."` | Ad-hoc SQL |

@@ -106,6 +106,20 @@ CKAN + Dataverse (incl. Borealis) + ArcGIS Hub + Socrata cover ~90% of reported 
 | `document_library` | Mostly PDFs or reports | `documents`: list files + metadata now; later download, extract text and tables, chunk and embed (tier `document`) | start URLs, file patterns, language | Saanich (partly), Metrolinx, OEB reports, Alberta publications inside CKAN |
 | `not_data` | A program page, a stats page, or a link to a third-party API list | mark `wontfix`, or override the URL to the real source | – | AMO, OCUL, CFL (publicapis.io link), Sault Ste Marie (GitHub page) |
 
+### Auto-profile routing (`pnpm autoprofile`)
+
+| Result | Route |
+|---|---|
+| A known platform answers on the page's own host or a linked host, and no other org already uses it | **applied**: curated source, status `identified` |
+| A linked portal that other orgs also use (data.ontario.ca, open.canada.ca) | **applied** if the org is found inside it (CKAN `organization_autocomplete`); otherwise `needs_review` |
+| ArcGIS Server with a folder named like open data | **applied**, recipe restricted to those folders |
+| ArcGIS Server with no such folder | `needs_human`: which folders are open data? |
+| JSON endpoints on data pages | `needs_review` (known_api) |
+| 3+ data files, outnumbering documents | `needs_review` (web_listing, draft recipe) |
+| 3+ documents, fewer data files | `needs_human` (document_library) |
+| Script-heavy page or API-looking links, no data | `needs_review` (js_app: inspect with a browser) |
+| Nothing found, or unreachable | `needs_human` |
+
 ### Profiling loop
 
 1. **Auto-profile.** This is an extension of the probe for `needs_profiling` sources. It checks `sitemap.xml`, ArcGIS REST roots (`/arcgis/rest/services?f=json`, `/server/rest/services`), CSW `GetCapabilities`, OGC API `/collections`, and GTFS zips. It follows one level of same-host links and counts file types, then proposes an archetype and a draft recipe.
@@ -146,3 +160,14 @@ A source can mix archetypes. Example: a CKAN portal whose resources are all PDFs
 2. Build `catalogs.jsonl` from probe results; collapse the 45 "published under" orgs onto their parent catalogs.
 3. CKAN connector first (open.canada.ca + Données Québec = ~36k datasets), then Dataverse, ArcGIS Hub, Socrata.
 4. DuckDB index + a minimal stdio MCP with `search_datasets` and `get_dataset`.
+
+## Reuse for other directories
+
+Everything after `orgs` is directory-agnostic: probe, fingerprints, auto-profile, archetypes and recipes, the review queue, findings, digest and DB publishing. A new directory (another country's meta-catalog, data.europa.eu publishers, a sector list) needs:
+
+1. **A sync adapter.** `src/cli/sync-directory.ts` is the only Canada-specific code. It extracts a CSV from this site's JS bundle and maps its bilingual columns. A new directory gets its own adapter that emits the same org record (`id`, `name`, `url`, `platform_label`, `org_type`, region fields, `dataset_count`).
+2. **A `directory_id` column** on `orgs` (and an `attrs json` column for directory-specific fields), so several directories can share one DB. Alternatively, one DB per directory, which already works today.
+3. **Host aliases as data, not code.** Move `API_HOME` in `src/fingerprint.ts` (front-end URL → API host) into a table.
+4. **Configurable digest grouping.** It groups by `province` and `org_type` today; make the dimensions a parameter.
+
+The platform fingerprints already cover the common international catalog stacks: CKAN, ArcGIS Hub/Server, Socrata, Opendatasoft, Dataverse, GeoNetwork, DCAT. Each new platform is one `try*` function in `src/fingerprint.ts`.

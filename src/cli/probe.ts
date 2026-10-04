@@ -4,23 +4,16 @@
  *
  *   pnpm probe [--only id1,id2] [--limit n] [--concurrency 8]
  */
-import * as cheerio from "cheerio";
 import pLimit from "p-limit";
 import { all, closeDb, db, observe, openItem, upsert } from "../db.js";
-import { BROWSER_UA, type FetchResult, fetchText, json } from "../http.js";
+import { API_HOME, fingerprint, get, htmlFacts, logProbe, now, probeRows, robots, sleep } from "../fingerprint.js";
+import { BROWSER_UA } from "../http.js";
 
 const arg = (k: string) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : undefined);
 const ONLY = arg("--only")?.split(",");
 const LIMIT = Number(arg("--limit") ?? Infinity);
 const CONCURRENCY = Number(arg("--concurrency") ?? 8);
 
-// Directory URLs that are a front end for an API hosted elsewhere. Value is the URL to fingerprint instead.
-const API_HOME: Record<string, string> = {
-  "search.open.canada.ca": "https://open.canada.ca/data/",
-  "open.toronto.ca": "https://ckan0.cf.opendata.inter.prod-toronto.ca/",
-};
-
-const AI_AGENTS = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-User", "Claude-SearchBot", "anthropic-ai", "CCBot", "Google-Extended", "PerplexityBot", "Bytespider", "Applebot-Extended", "meta-externalagent", "Amazonbot"];
 
 interface Org {
   id: string;
@@ -32,229 +25,7 @@ interface Org {
   dataset_count: number | null;
 }
 
-interface Detected {
-  platform: string;
-  base_url: string;
-  count: number | null;
-  scope?: Record<string, string>;
-  scope_count?: number | null;
-  version?: string | null;
-  evidence: string;
-}
-
 const conn = await db();
-const now = () => new Date().toISOString();
-const probeRows: object[] = [];
-
-function logProbe(check: string, r: FetchResult, result: unknown = null) {
-  probeRows.push({ url: r.url, check, status: r.status, final_url: r.final_url, content_type: r.content_type, server: r.server, blocked: r.blocked, ms: r.ms, error: r.error, result, fetched_at: now() });
-}
-
-// Serialize requests per host, spaced by HOST_GAP_MS, so we never burst one server.
-const HOST_GAP_MS = 500;
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const hostChains = new Map<string, Promise<unknown>>();
-function onHost<T>(host: string, fn: () => Promise<T>): Promise<T> {
-  const prev = hostChains.get(host) ?? Promise.resolve();
-  const run = () => sleep(HOST_GAP_MS).then(fn);
-  const next = prev.then(run, run);
-  hostChains.set(host, next.catch(() => {}));
-  return next;
-}
-const get = (url: string, opts?: Parameters<typeof fetchText>[1]) => onHost(new URL(url).host, () => fetchText(url, opts));
-
-// robots.txt, once per host.
-const robotsCache = new Map<string, Promise<Record<string, unknown> | null>>();
-function robots(origin: string) {
-  if (!robotsCache.has(origin))
-    robotsCache.set(
-      origin,
-      (async () => {
-        const r = await get(`${origin}/robots.txt`, { accept: "text/plain" });
-        const ok = r.status === 200 && !/<html/i.test(r.body.slice(0, 500));
-        const facts = ok ? parseRobots(r.body) : { present: false, status: r.status, blocked: r.blocked };
-        logProbe("robots", r, facts);
-        return facts;
-      })(),
-    );
-  return robotsCache.get(origin)!;
-}
-
-function parseRobots(txt: string) {
-  const groups: { agents: string[]; disallow: string[]; allow: string[] }[] = [];
-  let cur: (typeof groups)[number] | null = null;
-  let lastWasAgent = false;
-  const signals: string[] = [];
-  for (const raw of txt.split(/\r?\n/)) {
-    const line = raw.replace(/#.*/, "").trim();
-    const m = line.match(/^([A-Za-z-]+)\s*:\s*(.*)$/);
-    if (!m) continue;
-    const [, k, v] = m;
-    const key = k.toLowerCase();
-    if (key === "user-agent") {
-      if (!cur || !lastWasAgent) groups.push((cur = { agents: [], disallow: [], allow: [] }));
-      cur.agents.push(v);
-      lastWasAgent = true;
-      continue;
-    }
-    lastWasAgent = false;
-    if (key === "content-signal") signals.push(v);
-    if (!cur) continue;
-    if (key === "disallow" && v) cur.disallow.push(v);
-    if (key === "allow" && v) cur.allow.push(v);
-  }
-  const groupFor = (agent: string) => groups.find((g) => g.agents.some((a) => a.toLowerCase() === agent.toLowerCase()));
-  const blocksAll = (g?: (typeof groups)[number]) => !!g && g.disallow.includes("/") && !g.allow.includes("/");
-  const star = groupFor("*");
-  const named = AI_AGENTS.filter((a) => groupFor(a));
-  return {
-    present: true,
-    star_disallow_all: blocksAll(star),
-    star_disallows_api: !!star?.disallow.some((d) => /^\/(api|data\/api)/.test(d)),
-    ai_agents_named: named,
-    ai_agents_blocked: named.filter((a) => blocksAll(groupFor(a))),
-    content_signal: signals,
-    sitemap: /^\s*sitemap\s*:/im.test(txt),
-  };
-}
-
-function htmlFacts(body: string, baseUrl: string) {
-  const $ = cheerio.load(body);
-  const links = $("a[href]").map((_, a) => $(a).attr("href")!).get();
-  const ext = (re: RegExp) => links.filter((h) => re.test(h.split(/[?#]/)[0])).length;
-  const gen = $('meta[name="generator"]').attr("content") ?? null;
-  const text = body.slice(0, 300_000).toLowerCase();
-  const hints = [
-    /ckan|\/dataset\/|data-module=/.test(text) && "ckan",
-    /hub\.arcgis\.com|arcgis hub|opendata\.arcgis|esri/.test(text) && "arcgis_hub",
-    /socrata|tyler technologies|data\.json\?/.test(text) && "socrata",
-    /opendatasoft|ods-/.test(text) && "opendatasoft",
-    /dataverse/.test(text) && "dataverse",
-    /dkan/.test(text) && "dkan",
-    /figshare/.test(text) && "figshare",
-    /geonetwork/.test(text) && "geonetwork",
-    /drupal/.test((gen ?? "") + text.slice(0, 20000)) && "drupal",
-    /wordpress|wp-content/.test(text) && "wordpress",
-  ].filter(Boolean) as string[];
-  return {
-    title: $("title").first().text().trim().slice(0, 200) || null,
-    generator: gen,
-    hints,
-    links: links.length,
-    pdf_links: ext(/\.pdf$/i),
-    tabular_links: ext(/\.(csv|xlsx?|json|geojson|zip|kml|kmz|shp|gpkg|parquet)$/i),
-    base: baseUrl,
-  };
-}
-
-// ---- platform fingerprints. Each returns a Detected or null. ----
-
-async function tryCkan(origin: string, path: string): Promise<Detected | null> {
-  const segs = path.split("/").filter(Boolean);
-  const prefixes = [...new Set(["", segs[0] ? `/${segs[0]}` : "", "/data", "/recherche", "/ckan", "/catalogue", "/dataset"].filter((p) => p !== null))];
-  for (const p of prefixes) {
-    const r = await get(`${origin}${p}/api/3/action/package_search?rows=0`);
-    const j = json(r);
-    logProbe("ckan", r, j?.success ? { count: j.result?.count } : null);
-    if (j?.success) {
-      const base = `${origin}${p}`;
-      const v = json(await get(`${base}/api/3/action/status_show`))?.result?.ckan_version ?? null;
-      const det: Detected = { platform: "ckan", base_url: base, count: j.result.count, version: v, evidence: r.url };
-      const org = path.match(/\/organization\/([^/?#]+)/)?.[1];
-      if (org) {
-        const s = await get(`${base}/api/3/action/package_search?rows=0&fq=organization:${org}`);
-        const sj = json(s);
-        logProbe("ckan", s, sj?.success ? { count: sj.result?.count } : null);
-        det.scope = { ckan_fq: `organization:${org}` };
-        det.scope_count = sj?.success ? sj.result.count : null;
-      }
-      return det;
-    }
-    if (r.blocked) return null;
-  }
-  return null;
-}
-
-async function tryHub(origin: string): Promise<Detected | null> {
-  const r = await get(`${origin}/api/search/v1/collections/dataset/items?limit=1`);
-  const j = json(r);
-  logProbe("arcgis_hub", r, j ? { count: j.numberMatched } : null);
-  if (j && typeof j.numberMatched === "number") return { platform: "arcgis_hub", base_url: origin, count: j.numberMatched, evidence: r.url };
-  // Some Hub sites have a broken search API ("Site catalog is not configured correctly") but a working DCAT feed.
-  if (r.status === 400 && /Site catalog/.test(r.body)) {
-    const f = await get(`${origin}/api/feed/dcat-us/1.1.json`, { accept: "application/json", timeoutMs: 60_000 });
-    const fj = json(f);
-    logProbe("arcgis_hub_feed", f, fj ? { count: fj.dataset?.length } : null);
-    if (Array.isArray(fj?.dataset)) return { platform: "arcgis_hub", base_url: origin, count: fj.dataset.length, version: "search API broken; dcat feed only", evidence: f.url };
-  }
-  return null;
-}
-
-async function trySocrata(origin: string, host: string): Promise<Detected | null> {
-  const r = await get(`${origin}/api/catalog/v1?domains=${host}&search_context=${host}&only=dataset&limit=1`);
-  const j = json(r);
-  logProbe("socrata", r, j ? { count: j.resultSetSize } : null);
-  if (j && typeof j.resultSetSize === "number") return { platform: "socrata", base_url: origin, count: j.resultSetSize, evidence: r.url };
-  return null;
-}
-
-async function tryOds(origin: string): Promise<Detected | null> {
-  const r = await get(`${origin}/api/explore/v2.1/catalog/datasets?limit=1`);
-  const j = json(r);
-  logProbe("opendatasoft", r, j ? { count: j.total_count } : null);
-  if (j && typeof j.total_count === "number") return { platform: "opendatasoft", base_url: origin, count: j.total_count, evidence: r.url };
-  return null;
-}
-
-async function tryDataverse(origin: string, path: string): Promise<Detected | null> {
-  const r = await get(`${origin}/api/search?q=*&type=dataset&per_page=1`);
-  const j = json(r);
-  logProbe("dataverse", r, j?.data ? { count: j.data.total_count } : null);
-  if (j?.status === "OK") {
-    const det: Detected = { platform: "dataverse", base_url: origin, count: j.data.total_count, evidence: r.url };
-    const sub = path.match(/\/dataverse\/([^/?#]+)/)?.[1];
-    if (sub) {
-      const s = json(await get(`${origin}/api/search?q=*&type=dataset&per_page=1&subtree=${sub}`));
-      det.scope = { dataverse_subtree: sub };
-      det.scope_count = s?.data?.total_count ?? null;
-    }
-    return det;
-  }
-  return null;
-}
-
-async function tryDcat(origin: string): Promise<Detected | null> {
-  // DKAN and many CMSes expose a DCAT-US data.json. Body is capped, so count is a lower bound when large.
-  const r = await get(`${origin}/data.json`, { accept: "application/json" });
-  let count: number | null = null;
-  try {
-    const j = JSON.parse(r.body);
-    count = Array.isArray(j?.dataset) ? j.dataset.length : null;
-  } catch {
-    const m = r.body.match(/"identifier"\s*:/g);
-    count = r.status === 200 && /"dataset"\s*:\s*\[/.test(r.body) ? (m?.length ?? 0) : null;
-  }
-  logProbe("dcat", r, count !== null ? { count, truncated: r.body.length >= 2_000_000 } : null);
-  return count !== null ? { platform: "dcat", base_url: `${origin}/data.json`, count, evidence: r.url } : null;
-}
-
-async function fingerprint(url: string, hints: string[], label: string, labelOnly = false): Promise<Detected | null> {
-  const u = new URL(url);
-  const { origin, pathname: path, host } = u;
-  if (/(^|\.)figshare\.com$/.test(host)) return { platform: "figshare", base_url: "https://api.figshare.com/v2", count: null, evidence: "host" };
-  const order = labelOnly ? [label] : [...new Set([label, ...hints, "ckan", "arcgis_hub", "socrata", "opendatasoft", "dataverse"])];
-  for (const p of order) {
-    const d =
-      p === "ckan" ? await tryCkan(origin, path) :
-      p === "arcgis_hub" ? await tryHub(origin) :
-      p === "socrata" ? await trySocrata(origin, host) :
-      p === "opendatasoft" ? await tryOds(origin) :
-      p === "dataverse" ? await tryDataverse(origin, path) :
-      null;
-    if (d) return d;
-  }
-  return labelOnly ? null : tryDcat(origin);
-}
 
 // ---- per-org probe ----
 
@@ -333,10 +104,16 @@ async function probeOrg(org: Org) {
   const role = org.relationship && /publish/i.test(org.relationship) ? "published_under" : "primary";
   const t = now();
 
+  // Once profiling has decided an org's sources, the probe only records what it sees.
+  if (det && (await hasCurated(org.id))) {
+    await observe(conn, "org", org.id, "api", { platform: det.platform, base_url: det.base_url, count: det.scope_count ?? det.count, scope: det.scope ?? null, note: "org has curated sources; not linked" }, det.evidence);
+    return { id: org.id, outcome: "curated", count: det.scope_count ?? det.count, reported: org.dataset_count };
+  }
+
   if (det) {
     const portalId = `${det.platform}:${new URL(det.base_url).host}${new URL(det.base_url).pathname.replace(/\/$/, "")}`;
     const sources: object[] = [
-      { id: portalId, kind: det.platform === "dcat" ? "api" : "portal", platform: det.platform, base_url: det.base_url, scope: null, connector_id: det.platform, status: "identified", dataset_count: det.count, first_seen: t, last_probed: t, notes: det.version ? `version ${det.version}` : null, parent_id: null },
+      { id: portalId, kind: det.platform === "dcat" ? "api" : "portal", platform: det.platform, base_url: det.base_url, scope: null, connector_id: det.platform === "arcgis_server" ? "arcgis_rest" : det.platform, status: "identified", dataset_count: det.count, first_seen: t, last_probed: t, notes: [det.version && `version ${det.version}`, det.folders && `folders: ${det.folders.join(", ")}`].filter(Boolean).join("; ") || null, parent_id: null },
     ];
     let sourceId = portalId;
     if (det.scope) {
@@ -356,7 +133,7 @@ async function probeOrg(org: Org) {
   if (await hasCurated(org.id)) return { id: org.id, outcome: "curated", reported: org.dataset_count };
   if (!blockedHard && root.status === 200) {
     const sid = `web:${new URL(finalUrl).host}${new URL(finalUrl).pathname.replace(/\/$/, "")}`;
-    await keepFirstSeen([{ id: sid, kind: html && html.pdf_links > 5 ? "document_library" : "website", platform: "unknown", base_url: finalUrl, scope: null, connector_id: null, status: "needs_profiling", dataset_count: null, first_seen: t, last_probed: t, notes: html ? `pdf_links=${html.pdf_links} tabular_links=${html.tabular_links} hints=${html.hints.join("|")}` : null, parent_id: null }]);
+    await keepFirstSeen([{ id: sid, kind: "website", platform: "unknown", base_url: finalUrl, scope: null, connector_id: null, status: "needs_profiling", dataset_count: null, first_seen: t, last_probed: t, notes: html ? `pdf_links=${html.pdf_links} tabular_links=${html.tabular_links} hints=${html.hints.join("|")}` : null, parent_id: null }]);
     await upsert(conn, "org_sources", [{ org_id: org.id, source_id: sid, role }]);
     await openItem(conn, { kind: "needs_profiling", subject_type: "source", subject_id: sid, title: `${org.name_en}: no known data API found`, detail: `${finalUrl}${html ? ` (pdf ${html.pdf_links}, tabular ${html.tabular_links}, hints ${html.hints.join(",") || "none"})` : ""}` });
   }
@@ -364,16 +141,19 @@ async function probeOrg(org: Org) {
 }
 
 async function keepFirstSeen(rows: any[]) {
+  const keep: any[] = [];
   for (const r of rows) {
-    const prev = await all<{ first_seen: string; recipe: unknown; archetype: string | null }>(conn, "select first_seen::varchar as first_seen, recipe, archetype from sources where id = $id", { id: r.id });
+    const prev = await all<{ first_seen: string; recipe: unknown; archetype: string | null; curated: boolean }>(conn, "select first_seen::varchar as first_seen, recipe, archetype, curated from sources where id = $id", { id: r.id });
+    if (prev[0]?.curated) continue; // profiling owns this row
+    keep.push(r);
     if (prev[0]?.first_seen) r.first_seen = prev[0].first_seen;
     // Profiling output is hand/agent-curated; a re-probe must not drop it.
     const prevRecipe = prev[0]?.recipe;
     r.curated = false;
     r.recipe = (typeof prevRecipe === "string" ? JSON.parse(prevRecipe) : prevRecipe) ?? r.recipe ?? null;
-    r.archetype = prev[0]?.archetype ?? r.archetype ?? (r.platform && r.platform !== "unknown" ? "platform_api" : null);
+    r.archetype = prev[0]?.archetype ?? r.archetype ?? (r.platform === "arcgis_server" ? "esri_rest" : r.platform && r.platform !== "unknown" ? "platform_api" : null);
   }
-  await upsert(conn, "sources", rows);
+  await upsert(conn, "sources", keep);
 }
 
 // ---- main ----
@@ -386,7 +166,9 @@ let orgs = await all<Org>(conn, `
 if (ONLY) orgs = orgs.filter((o) => ONLY.includes(o.id));
 orgs = orgs.slice(0, LIMIT);
 
-await upsert(conn, "connectors", ["ckan", "arcgis_hub", "socrata", "opendatasoft", "dataverse", "dcat", "figshare"].map((id) => ({ id, platform: id, status: "planned", description: null, notes: null })));
+// Register connectors we will need; never touch an existing connector's status.
+const known = new Set((await all<{ id: string }>(conn, "select id from connectors")).map((c) => c.id));
+await upsert(conn, "connectors", ["ckan", "arcgis_hub", "socrata", "opendatasoft", "dataverse", "dcat", "figshare", "geonetwork", "arcgis_rest"].filter((id) => !known.has(id)).map((id) => ({ id, platform: id === "arcgis_rest" ? "arcgis_server" : id, status: "planned", description: null, notes: null })));
 
 const limit = pLimit(CONCURRENCY);
 let done = 0;
