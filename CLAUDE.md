@@ -1,6 +1,6 @@
 # CODD AI
 
-Registry, connectors and (later) an MCP server over the portals in the Canadian Open Data Directory. TypeScript (Node 22, pnpm, tsx); state lives in one DuckDB file.
+Registry, connectors and (later) an MCP server over the portals in the Canadian Open Data Directory. Public repo, MIT licensed, built by Baobab Tech with the Canada Open Data Society. TypeScript (Node 22, pnpm, tsx); state lives in one DuckDB file.
 
 ## Start of session
 
@@ -9,7 +9,19 @@ pnpm install
 pnpm db:pull        # latest published DB → db/codd.duckdb
 ```
 
-Read `NEXT.md` for where work left off, and `docs/PLAN.md` for the data model and the plan for non-standard sources.
+Then:
+
+1. Read `NEXT.md` for where work left off and what is queued.
+2. Read `docs/PLAN.md` for the data model, source archetypes and statuses, and the auto-profile routing.
+3. Run `pnpm items` to see the open work queue.
+
+`REUSE.md` covers applying this harness to another directory; only `src/cli/sync-directory.ts` is specific to this one.
+
+## Where things stand
+
+- Done: directory sync, probe (platform fingerprints via API), auto-profile with review routing, and the review tooling.
+- Next: work the `needs_review` queue, get answers to the `needs_human` queue, then build connectors (CKAN first) and harvest into `datasets` / `resources`. The MCP server comes after.
+- Keep `NEXT.md` current: update it at the end of every session with what changed and what is next.
 
 ## State lives in the DB, not in git
 
@@ -18,8 +30,9 @@ Read `NEXT.md` for where work left off, and `docs/PLAN.md` for the data model an
 Tables, by purpose (schema in `src/db.ts`):
 
 - `orgs`: the directory as published. Never edit it. Put corrections in `org_overrides` (with a `note` saying why).
-- `sources`: how to connect: `platform`, `base_url`, `scope`, `connector_id`, `archetype`, `recipe`, `status`.
-- `observations`: structured facts refreshed by the probe (access, robots, landing, api).
+- `sources`: how to connect: `platform`, `base_url`, `scope`, `connector_id`, `archetype`, `recipe`, `status`, `curated`. Curated sources come from profiling and are never touched by the probe.
+- `org_sources`: which orgs a source serves.
+- `observations`: structured facts refreshed by the probe and auto-profile (access, robots, landing, api, autoprofile).
 - `open_items`: the work queue. Close items with `status='resolved'` or `'wontfix'` and a `resolution`.
 - `findings`: narrative discoveries for the landscape report. Append-only.
 
@@ -52,6 +65,12 @@ pnpm reserves some script names (`import`, `profile`, ...). Check with `pnpm <na
 Rule of thumb: anything that is not clearly a data catalog, an API or a list of data files goes to a person. That includes documents, an ambiguous scope (which folders or org filter), and anything with licensing or "should this be public" implications.
 
 `pnpm items [kind]` lists open items. `pnpm items resolve|wontfix <id> "why"` closes one.
+
+## End of session
+
+1. Record findings (`pnpm note`) and close the items you resolved.
+2. Update `NEXT.md`.
+3. Commit and push the code and docs, then `pnpm db:publish -m "..."`.
 
 ## Writing the landscape report
 

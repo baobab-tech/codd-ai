@@ -56,12 +56,12 @@ create table if not exists org_overrides (
 -- A thing we can point a connector at: a portal, a scoped slice of a portal, a document library, an API.
 create table if not exists sources (
   id varchar primary key,
-  kind varchar not null,           -- portal | portal_scope | document_library | api | website | dataset
-  platform varchar,                -- detected: ckan | arcgis_hub | socrata | opendatasoft | dataverse | dkan | figshare | unknown
+  kind varchar not null,           -- portal | portal_scope | api | website | document_library
+  platform varchar,                -- ckan | arcgis_hub | arcgis_server | socrata | opendatasoft | dataverse | geonetwork | dcat | figshare | statcan_wds | custom | unknown
   base_url varchar not null,       -- API base or landing URL
   scope json,                      -- e.g. {"ckan_fq": "organization:ville-de-laval"}
   connector_id varchar,
-  status varchar not null,         -- unprobed | identified | blocked | dead | needs_profiling | harvestable | harvested
+  status varchar not null,         -- needs_profiling | proposed | needs_human | identified | harvestable | harvested | not_data (see docs/PLAN.md)
   dataset_count integer,           -- live count from the platform API
   first_seen timestamp,
   last_probed timestamp,
@@ -94,7 +94,7 @@ create table if not exists connectors (
 -- What we still need to figure out, fix, or decide.
 create table if not exists open_items (
   id varchar primary key,          -- deterministic: <kind>:<subject_id>[:<detail>]
-  kind varchar not null,           -- blocker | dead_link | unknown_platform | platform_mismatch | data_error | needs_profiling | question | decision
+  kind varchar not null,           -- needs_review (agent) | needs_human (person) | decision (person) | blocker | dead_link | platform_mismatch | data_error | needs_profiling
   subject_type varchar not null,   -- org | source | connector | project
   subject_id varchar,
   status varchar not null,         -- open | stale (auto-cleared, not seen on last probe) | resolved | wontfix

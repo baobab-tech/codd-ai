@@ -1,56 +1,44 @@
 # Next
 
-Paused 2026-10-04. Start with `pnpm install && pnpm db:pull`.
+Working log. Last updated 2026-10-04. Start a session with `pnpm install && pnpm db:pull`, then `pnpm items`.
 
-## Decisions so far
+## State
 
-- TypeScript for everything (Node 22, pnpm, tsx). The MCP server will be TypeScript.
-- One DuckDB file (`db/codd.duckdb`, gitignored) is the source of truth for all state: registry, status, probes, and later the harvest. Git holds code and docs only.
-- The DB is published separately from commits, as GitHub release assets:
-  - `pnpm db:pull [tag]` downloads `db-latest`, or a dated tag, into `db/`. The previous local copy is kept as `db/codd.duckdb.bak`. Run it before starting work.
-  - `pnpm db:publish -m "note"` checkpoints, gzips, and uploads. It replaces the asset on the rolling `db-latest` release and creates a dated `db-YYYYMMDD-HHMMSS` snapshot release, with table row counts in the notes.
-  - One writer at a time: the last publish wins, and nothing is merged.
-  - `pnpm db:export` / `pnpm db:import` are optional. They round-trip the small tables through `registry/*.jsonl` when a readable diff is wanted.
-- The model keeps three layers apart: org → source (catalog / portal scope / document library / API) → connector (one per platform, shared across sources). Dataset and resource records come later. Expect to iterate on this as we explore.
-- `open_items` tracks what still needs figuring out: blockers, dead links, unknown platforms, platform mismatches, data errors, items needing profiling, questions.
-- `observations` holds landscape facts for the agent-friendliness report: bot protection, robots.txt rules for AI bots, API availability, formats, licence.
+| Step | Status |
+|---|---|
+| Directory sync | Done. 253 orgs, 104,617 reported datasets. |
+| Probe | Done (2026-10-04). Platform fingerprints for CKAN, ArcGIS Hub/Server, Socrata, ODS, Dataverse, GeoNetwork, DCAT. |
+| Profiling | 5 sources profiled by hand (StatCan WDS, Marine Data BC GeoNetwork, Saanich, Banff, Red Deer). Auto-profile run on 36: 7 applied, 19 `needs_review`, 11 `needs_human`. |
+| Sources | 210 orgs have an identified or harvestable source, 30 are in the review queue, 13 have a dead link or no URL. |
+| Findings | 36 recorded (`pnpm note --list`). |
+| Connectors, harvest, MCP | Not started. |
 
-## Done
+Latest DB: the `db-latest` release (`pnpm db:pull`).
 
-- `pnpm sync` pulls the directory (CSV embedded in the site's JS bundle) into `orgs` and `data/directory/`. 253 orgs, 104,617 reported datasets.
-- Schema in `src/db.ts`. HTTP helper with bot-block detection in `src/http.ts`.
-- First DB published: `db-20261004-1706` (253 orgs, other tables empty).
+## Queue
 
-- `pnpm probe` fingerprints every org URL. Results go to `probes`, `sources`, `org_sources`, `observations` and `open_items`. First full run: 2026-10-04. Findings are in the `findings` table (`pnpm note --list`). `pnpm digest` collects everything a report needs; see CLAUDE.md, "Writing the landscape report".
-- `pnpm sql "<query>"` runs ad-hoc queries.
-- `org_overrides` holds our corrections to directory fields; the probe uses them over `orgs`. First entry: Regina → https://openregina.ca/ (CKAN, 1,379 datasets).
-- `sources.archetype` and `sources.recipe` record how to connect to non-standard sources. A re-probe preserves both. See "Non-standard sources" in `docs/PLAN.md`.
+1. **needs_human (11), for the maintainers.** Run `pnpm items needs_human`.
+   - Document-heavy sources: Birds Canada, Nanaimo, MPHEC, Metrolinx, NL Statistics. Ingest the documents, look elsewhere for data, or skip?
+   - No data found: Brandon, GeoNB, Nunavut, PEI GIS.
+   - Capital Regional District: which ArcGIS Server folders are open data?
+   - OCUL: page unreachable.
+2. **decision (1):** does robots.txt `Disallow` apply to public APIs (Dataverse defaults)?
+3. **needs_review (19), a Claude session can work these.** Run `pnpm items needs_review`.
+   - Browser inspections: Bank of Canada (Valet API), CFL (a publicapis.io link, likely not_data), CIHI, geo.ca, FRDR, CONP, NL Open Data, Gatineau, CMHC, Hamilton, Quinte West.
+   - Org scopes inside shared portals: AMO and Tribunals Ontario (data.ontario.ca), Whitehorse and NWT Geomatics (open.canada.ca), Manitoba Land Initiative (data.winnipeg.ca, probably only a reference).
+   - File listings to confirm: London Transit, OEB, Sault Ste. Marie.
+4. **Probe items:** 12 dead links, 13 platform mismatches, 2 data errors (Calgary has no URL; Shawinigan's URL is wrong), 1 blocker (Canadian Space Agency TLS).
+5. **Build the CKAN connector** and harvest into `datasets` / `resources`. Then ArcGIS Hub, Socrata, Dataverse, ODS, GeoNetwork, `arcgis_rest` (folder-restricted), StatCan WDS and `web_listing`.
+6. **MCP server** (TypeScript) over the harvested tables.
 
-- Session discoveries are recorded with `pnpm note`, and CLAUDE.md requires it. This session's 22 findings are backfilled. `docs/LANDSCAPE.md` was removed; its content is now in `findings`.
+## Log
 
-- Profiling pilot (2026-10-04), 5 sources recorded with `pnpm profile-source`: StatCan WDS (known_api, 8,271 tables), Marine Data BC (GeoNetwork, 1,713), Saanich (web_listing), Banff (esri_rest, BanffOpenData folder only), Red Deer (custom JSON API). Curated sources survive re-probes (tested).
+- 2026-10-03: repo created; directory extraction; plan.
+- 2026-10-04: TypeScript + DuckDB; DB published as release assets; probe over 253 orgs (WAF, TLS, robots.txt, bot-block handling); Regina override; findings table, `pnpm note`, `pnpm digest`; profiling pilot (5 sources) and curated sources; GeoNetwork and ArcGIS Server fingerprints; auto-profile with review routing; `pnpm items`; public-repo cleanup (README, MIT licence, REUSE.md).
 
-- Auto-profile run (2026-10-04) on 36 sources. Applied automatically: 7 (Windsor, Vernon, St. Albert and Delta on Hub; Surrey ArcGIS Server; Elections Canada as an org inside open.canada.ca; DNV ArcGIS Server via the probe). needs_review: 19. needs_human: 11.
+## Gotchas
 
-## Probe behaviour
-
-- Requests to one host run one at a time, 500 ms apart. Up to 8 orgs are probed in parallel.
-- A WAF challenge (AWS 202, Cloudflare) gets a 10 s pause and a retry, then a retry with a browser UA. `blocker` is opened only when no API answers either.
-- `API_HOME` in `src/cli/probe.ts` maps front-end URLs to their API host (open.canada.ca, Toronto).
-- Re-probing an org marks its previous auto-generated items `stale`. They reopen if the problem is seen again. Items set to `resolved` or `wontfix` are left alone.
-
-## Open items (2026-10-04)
-
-needs_profiling 42 · dead_link 11 (Regina resolved) · platform_mismatch 12 · data_error 2 (Calgary no URL, Shawinigan wrong URL) · blocker 1 (CSA TLS)
-
-## Next steps
-
-1. **needs_human (11), for the maintainers:** run `pnpm items needs_human`. They cover document-heavy sources (Birds Canada, Nanaimo, MPHEC, Metrolinx, NL Stats), pages with no data found (Brandon, GeoNB, Nunavut, PEI GIS), CRD ArcGIS folder selection, and OCUL being unreachable.
-2. **needs_review (19), a Claude session can work these:**
-   - browser inspections: Bank of Canada Valet, CFL (a publicapis.io link, likely not_data), CIHI, geo.ca, FRDR, CONP, NL Open Data, Gatineau, CMHC, Hamilton, Quinte West;
-   - org scopes inside shared portals: AMO, Tribunals Ontario, Whitehorse, NWT, MLI;
-   - file listings: London Transit, OEB, Sault Ste. Marie.
-3. **decision:** whether robots.txt applies to public APIs (Dataverse).
-4. Fix or close the 12 dead links and review the 13 platform mismatches.
-5. Build the CKAN connector and harvest into `datasets` / `resources`. Then ArcGIS Hub, Socrata, Dataverse, ODS, GeoNetwork, and `arcgis_rest` with folder restriction.
-6. Generalize for other directories, if wanted (see "Reuse" in docs/PLAN.md).
+- pnpm reserves some script names (`import`, `profile`). That's why it's `db:import` and `profile-source`.
+- `db:publish` tags snapshots to the second. Publish only from one machine or session at a time.
+- `API_HOME` in `src/fingerprint.ts` maps front-end hosts to API hosts (open.canada.ca, Toronto).
+- The probe re-derives non-curated sources and auto items on every run. Curated sources are only observed, never changed.

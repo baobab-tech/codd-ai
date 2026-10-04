@@ -19,18 +19,22 @@ An agent can't use "the directory" directly. It needs to know, for each source, 
 ## How it works
 
 ```
-directory ──sync──▶ orgs ──probe──▶ sources ──profile──▶ curated sources ──harvest──▶ datasets/resources ──▶ MCP
-                      │                │                       │
-                      └── org_overrides└── observations, open_items, findings (landscape analysis)
+directory ─sync─▶ orgs ─probe─▶ sources ─autoprofile─▶ applied / needs_review / needs_human ─review─▶ curated sources ─harvest─▶ datasets ─▶ MCP
+                   │              │                                                                                    (next)        (planned)
+            org_overrides         └──▶ observations · open_items · findings · probes  (landscape analysis)
 ```
 
-1. **Sync** (`pnpm sync`). The directory has no API. Its org list is a CSV embedded in the site's JS bundle. The sync walks the bundle, extracts the CSV, and loads it into `orgs` unchanged. Our corrections live in `org_overrides`, never in `orgs`.
-2. **Probe** (`pnpm probe`). For each org URL: reachability, redirects, TLS, bot-protection signatures, and robots.txt rules for AI crawlers. Then it fingerprints the platform through its API, not the HTML. The result is a `sources` row (platform, API base, scope inside a shared portal, live dataset count). Problems become `open_items`.
-3. **Profile** (`pnpm profile-source`). Sources the probe can't identify are profiled by hand or by an agent into an archetype: `platform_api`, `known_api`, `esri_rest`, `web_listing`, `js_app`, `document_library` or `not_data`. A `recipe` (JSON) records how to connect. Profiled sources are marked `curated`, and the probe never overwrites them.
-4. **Harvest** (next). One connector per platform or archetype lists datasets and resources into the database. Each resource gets a tier: live query, tabular file, geo file, document, or link only.
-5. **MCP** (planned). A TypeScript MCP server for searching datasets, inspecting them, and querying resources, either live through the source API or through DuckDB over a downloaded file.
+1. **Sync** (`pnpm sync`). The directory has no API. Its org list is a CSV embedded in the site's JS bundle. The sync walks the bundle, extracts the CSV, and loads it into `orgs` unchanged. Corrections live in `org_overrides`, never in `orgs`.
+2. **Probe** (`pnpm probe`). For each org URL: reachability, redirects, TLS, bot-protection signatures, and robots.txt rules for AI crawlers. Then it fingerprints the platform through its API, not the HTML: CKAN, ArcGIS Hub, ArcGIS Server, Socrata, Opendatasoft, Dataverse, GeoNetwork, DCAT. The result is a `sources` row (platform, API base, scope inside a shared portal, live dataset count). Problems become `open_items`.
+3. **Auto-profile** (`pnpm autoprofile`). For orgs with no recognized API, it reads the landing page and a few data pages, and fingerprints the portals they link to. It counts data and document files and looks for JSON APIs. Each source then gets an archetype (`platform_api`, `known_api`, `esri_rest`, `web_listing`, `js_app`, `document_library`, `not_data`) and is routed to one of:
+   - **applied**: a known platform answered; nothing to review.
+   - **needs_review**: a Claude session verifies it (inspects a JS app in a browser, confirms a file listing, finds the org inside a shared portal).
+   - **needs_human**: a person decides (document libraries, pages with no data, which ArcGIS folders are open data).
+4. **Review** (`pnpm items`, `pnpm profile-source`). Reviewers confirm the archetype and write a `recipe` (JSON connector settings). Reviewed sources are marked `curated`, and the probe never overwrites them.
+5. **Harvest** (next). One connector per platform or archetype lists datasets and resources into the database. Each resource gets a tier: live query, tabular file, geo file, document, or link only.
+6. **MCP** (planned). A TypeScript MCP server for searching datasets, inspecting them, and querying resources, either live through the source API or through DuckDB over a downloaded file.
 
-The detailed design is in [docs/PLAN.md](docs/PLAN.md).
+The detailed design is in [docs/PLAN.md](docs/PLAN.md). To run this against a different directory of portals, see [REUSE.md](REUSE.md).
 
 ### Landscape analysis
 
@@ -38,7 +42,7 @@ Every step records what it learns about how agent-friendly Canadian open data is
 
 - `observations`: structured facts per org (access, robots.txt, API, landing page).
 - `findings`: narrative discoveries, one quotable fact each, added with `pnpm note`.
-- `open_items`: blockers, dead links, wrong directory labels, sources still to profile.
+- `open_items`: the work queue (blockers, dead links, wrong directory labels, `needs_review`, `needs_human`).
 
 `pnpm digest` collects all of it into one markdown file, the input for a one-page landscape report. See [reports/](reports/).
 
@@ -76,7 +80,9 @@ Maintainers publish with `pnpm db:publish -m "what changed"`. Only one person or
 |---|---|
 | `pnpm sync` | Re-pull the directory into `orgs` |
 | `pnpm probe [--only id,id]` | Probe org URLs and fingerprint platforms |
-| `pnpm profile-source <org> ...` | Record a profiled (curated) source |
+| `pnpm autoprofile [--only id,id] [--dry-run]` | Profile and route sources the probe couldn't identify |
+| `pnpm items [kind]` | List the work queue; `pnpm items resolve <id> "why"` closes an item |
+| `pnpm profile-source <org> ...` | Record a reviewed (curated) source |
 | `pnpm note "..."` / `pnpm note --list` | Record or list findings |
 | `pnpm digest [--out file]` | Landscape digest |
 | `pnpm sql "..."` | Ad-hoc SQL against the database |
@@ -89,7 +95,11 @@ The probe sends requests to a host one at a time, 500 ms apart, with a `codd-ai`
 
 ## Status
 
-Early. Directory sync, probing and profiling work. Connectors, harvesting and the MCP server are next. [NEXT.md](NEXT.md) is the working log and has the current to-do list.
+Early. Directory sync, probing and auto-profiling work: 210 of 253 orgs have an identified source, 30 are in the review queue, and 13 have a dead link or no URL. Connectors, harvesting and the MCP server are next. [NEXT.md](NEXT.md) is the working log and has the current to-do list.
+
+## Reuse
+
+Only the directory sync is specific to this directory. [REUSE.md](REUSE.md) explains how to fork this for another meta-catalog.
 
 ## Licence
 

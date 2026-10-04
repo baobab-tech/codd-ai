@@ -1,173 +1,173 @@
-# CODD AI plan
+# CODD AI design
 
-Status: draft for iteration. Last updated 2026-10-04.
+Status: discovery and profiling work; connectors, harvest and the MCP server are next. Last updated 2026-10-04. Current work queue: [NEXT.md](../NEXT.md). Reusing this for another directory: [REUSE.md](../REUSE.md).
 
-## What the directory is
+## The directory
 
-The Canadian Open Data Directory lists 253 organizations, not datasets. Each row is a portal (or a sub-catalog inside one) with a self-reported dataset count. The counts sum to 104,617. The datasets themselves live in the portals.
+The Canadian Open Data Directory lists 253 organizations, not datasets. Each row is a portal (or a publisher inside a shared portal) with a self-reported dataset count. The counts sum to 104,617; the datasets live in the portals.
 
-Source: a CSV embedded as a JS string in the site's SvelteKit bundle (`_app/immutable/chunks/*.js`). There is no API. The bundle also links two Google Sheets (`1J85yJwtVKP9jDZKrQIDE_oTVK4Dxj76I`, `1yBEsUQ52j-uj61GJBsCwxAMqC5bRcCAp`), likely the upstream editing sheets. `pnpm sync` re-extracts the CSV, so a site rebuild changes the chunk hash but not the method.
+There is no API. The org list is a CSV embedded as a JS string in the site's SvelteKit bundle (`_app/immutable/chunks/*.js`). `pnpm sync` walks the bundle and extracts it, so a site rebuild changes the chunk hash but not the method. The bundle also links two Google Sheets (`1J85yJwtVKP9jDZKrQIDE_oTVK4Dxj76I`, `1yBEsUQ52j-uj61GJBsCwxAMqC5bRcCAp`), likely the upstream editing sheets.
 
-### Platform mix (directory labels)
+### Platform labels, as published
 
-| Platform | Orgs | Datasets (self-reported) |
+| Directory label | Orgs | Datasets (self-reported) |
 |---|---:|---:|
 | CKAN | 49 | 50,018 |
-| Other / NA (unlabelled) | 35 | 35,240 |
+| Other / NA | 35 | 35,240 |
 | ArcGIS Hub | 148 | 12,095 |
 | Dataverse | 2 | 3,641 |
 | Socrata (Tyler) | 13 | 3,240 |
 | Opendatasoft | 3 | 383 |
 | DKAN, API-only | 3 | 0 reported |
 
-Concentration: Government of Canada (CKAN, 34,844), Borealis (Dataverse, 21,755), Figshare (9,695), Abacus (Dataverse, 2,512). Four portals hold ~66% of all datasets.
+The probe detects platforms through their APIs instead. Detected numbers, which differ from these labels, are in `pnpm digest`.
 
-Several "Other" entries are known platforms: Borealis is Dataverse, Figshare has a public API, data.ontario.ca and open.alberta.ca are CKAN, data.mississauga.ca is ArcGIS Hub. A probe step will relabel these.
+### Data quality issues in the directory
 
-### Data quality issues found
-
-- 21 orgs have no English URL; 20 are Quebec orgs with a French URL only (now used as fallback). City of Calgary has no URL at all (it is `data.calgary.ca`, Socrata).
+- 21 orgs have no English URL; 20 are Quebec orgs with a French URL only (used as fallback). City of Calgary has no URL at all.
 - City of Shawinigan's URL points at the Rouyn-Noranda organization page.
-- 45 orgs publish *under* another portal (Données Québec ×20, Columbia Basin Water Hub ×12, Niagara Open Data ×5, The Data Zone ×3, Region of Durham ×3, HRM ×1, Borealis ×1). Their datasets are a subset of the parent's, so summed counts double-count.
-- Dataset counts are mostly dated 2025-02 and are "NA" for 46 orgs.
-- Platform labels are inconsistent (`Opendatasoft` vs `Open Data Soft`, `Other` vs `other`, `NA`).
+- 45 orgs publish under another portal (Données Québec ×20, Columbia Basin Water Hub ×12, Niagara Open Data ×5, The Data Zone ×3, Region of Durham ×3, HRM, Borealis). Their datasets are a subset of the parent's, so summed counts double-count.
+- Dataset counts are mostly dated 2025-02 and are NA for 46 orgs.
+- Platform labels are inconsistent (`Opendatasoft` vs `Open Data Soft`, `Other` vs `other`, `NA`), and 13 are wrong according to the probe.
 
 ## Data model
 
-Three levels. The directory only gives us the first.
+1. **Organization**: a publisher, from the directory (`orgs`). Corrections go in `org_overrides`.
+2. **Source**: one thing a connector can list, meaning a platform, a base URL and an optional scope. Examples: `ckan:www.donneesquebec.ca#organization:ville-de-laval`, `esri_rest:maps.banff.ca/arcgis/BanffOpenData`. Many orgs can share a source's parent portal. `org_sources` links orgs to sources.
+3. **Dataset → Resource** (next): harvested from sources. A dataset has metadata (title, description, tags, licence, dates, spatial extent). A resource is a downloadable or queryable thing (CSV, GeoJSON, Feature Service, PDF, API).
 
-1. **Organization** — a publisher (City of Laval). From the directory.
-2. **Catalog** — a harvestable endpoint with one platform and one API base (`https://www.donneesquebec.ca` CKAN, filtered to `organization:ville-de-laval`). Many orgs can share a catalog; a catalog has a connector.
-3. **Dataset → Resource** — harvested from catalogs. A dataset has metadata (title, description, tags, license, dates, spatial extent); a resource is a downloadable or queryable thing (CSV, GeoJSON, Feature Service, PDF, API).
+Each source has an **archetype**, which describes how it is listed:
 
-Queryability is a property of a resource, not a dataset. A tier per resource:
+| Archetype | What it looks like | Connector |
+|---|---|---|
+| `platform_api` | CKAN, ArcGIS Hub, Socrata, Opendatasoft, Dataverse, GeoNetwork, DCAT `data.json` | one per platform |
+| `known_api` | A public API that isn't a catalog platform (StatCan WDS, Red Deer) | one small connector each |
+| `esri_rest` | An ArcGIS Server services directory without a Hub catalog | `arcgis_rest`, restricted to the folders in `recipe.folders` |
+| `web_listing` | Static pages linking data files | `web_listing`: start URLs and link patterns from `recipe` |
+| `js_app` | A client-side app; the data comes from a backend API found by inspecting network calls | reclassified once the API is found |
+| `document_library` | Mostly PDFs or reports | `documents`: list now; extract, chunk and embed later |
+| `not_data` | A program page, a link list, nothing harvestable | none (`wontfix` or a URL override) |
+
+`sources.recipe` (JSON) holds whatever the connector needs beyond platform and URL: start URLs, link patterns, Esri folders, discovered endpoints.
+
+Each resource has a **tier**, which describes what the MCP can do with it:
 
 | Tier | Example | What the MCP can do |
 |---|---|---|
-| `live_query` | Socrata SODA, ArcGIS FeatureServer, CKAN DataStore, ODS Explore | Filter/aggregate server-side |
+| `live_query` | Socrata SODA, ArcGIS FeatureServer, CKAN DataStore, ODS Explore, StatCan WDS | Filter and aggregate server-side |
 | `tabular_file` | CSV, XLSX, JSON, GeoJSON, Parquet | Download, load into DuckDB, query |
 | `geo_file` | SHP zip, KML, GPKG | Load via DuckDB spatial |
-| `document` | PDF, DOCX, HTML page | Extract text/tables, cite |
+| `document` | PDF, DOCX, HTML page | Extract text and tables, cite |
 | `link_only` | Landing page, broken link, login wall | Return metadata and URL only |
 
-## What we record, and where
+A source can mix them: a CKAN portal whose resources are all PDFs is `platform_api` with `document` resources.
 
-Everything lives in one DuckDB file, published as a GitHub release (`pnpm db:pull` / `pnpm db:publish`). Git holds code and docs.
+## What is recorded, and where
+
+Everything lives in one DuckDB file, published as GitHub release assets (`pnpm db:pull` / `pnpm db:publish`). Git holds code and docs. Schema: `src/db.ts`.
 
 | Table | Holds | Written by |
 |---|---|---|
 | `orgs` | The directory, exactly as published. Never hand-edited. | `pnpm sync` |
-| `org_overrides` | Our corrections to directory fields, with a note saying why (e.g. Regina URL → openregina.ca). Probe and connectors read these over `orgs`. | us |
-| `sources` | **How to connect.** One row per harvestable thing: `platform`, `base_url`, `scope` (filter inside a shared portal), `connector_id`, `archetype`, `recipe` (connector config when platform + URL isn't enough), `status`, live `dataset_count`. | probe, then profiling |
-| `org_sources` | Which orgs a source serves (`primary` / `published_under`). | probe |
-| `connectors` | One per access method, shared by many sources. Status: planned / building / ready. | us |
-| `observations` | **Landscape facts**, one value per (subject, key): `access` (status, redirects, TLS, latency, bot block), `robots` (AI agent rules), `landing` (title, generator, file-link counts), `api` (what answered), `html_blocked_api_ok`, `rate_challenge`. | probe, profiling |
-| `open_items` | **Work queue**: blockers, dead links, platform mismatches, data errors, needs-profiling, questions. Auto items go `stale` when a re-probe no longer sees them; `resolved` / `wontfix` with a resolution are ours and stick. | probe, us |
-| `probes` | Raw evidence: every request, status, timing, block signature, parsed result. | probe |
-| `findings` | **Narrative discoveries** from sessions, append-only, one quotable fact each (`pnpm note`). | claude, us |
+| `org_overrides` | Corrections to directory fields, with a note saying why (e.g. Regina → openregina.ca). Probe and connectors read these over `orgs`. | maintainers |
+| `sources` | How to connect: `platform`, `base_url`, `scope`, `connector_id`, `archetype`, `recipe`, `status`, live `dataset_count`, `curated`. | probe, autoprofile, profile-source |
+| `org_sources` | Which orgs a source serves (`primary` / `published_under`). | same |
+| `connectors` | One per access method, shared by many sources. Status: planned / building / ready. | probe, profile-source |
+| `observations` | Structured facts, one value per (subject, key): `access`, `robots`, `landing`, `api`, `autoprofile`, `html_blocked_api_ok`, `rate_challenge`. | probe, autoprofile |
+| `open_items` | Work queue (see below). | probe, autoprofile, sessions |
+| `findings` | Narrative discoveries, append-only, one quotable fact each. | `pnpm note` |
+| `probes` | Raw evidence: every request, status, timing, block signature, parsed result. | probe, autoprofile |
 
-`pnpm digest` collects aggregates, observations, open items and findings into one markdown input. A session writes the one-page report from it (see CLAUDE.md).
+`pnpm digest` collects aggregates, observations, open items and findings into one markdown input for the landscape report.
 
-Harvested `datasets` and `resources` tables will go in the same DB. If it outgrows a single release asset, harvest data moves to per-source Parquet files next to it.
+Harvested `datasets` and `resources` will go in the same DB. If it outgrows a single release asset, harvest data moves to per-source Parquet files next to it.
 
-## Connectors
+### Source status
 
-One connector per platform, each implementing:
+`needs_profiling` (probe found no API) → `proposed` (autoprofile draft, awaiting review) or `needs_human` → `identified` (platform API confirmed) / `harvestable` (recipe confirmed) → `harvested`. Also `not_data`.
 
-- `list_datasets(catalog) -> iterator[Dataset]` (paged, incremental by modified date where the API supports it)
-- `get_dataset(catalog, id) -> Dataset`
-- `query(resource, filters, fields, limit)` for `live_query` resources
+`curated = true` marks sources decided by profiling, whether auto-applied, proposed or set by hand. The probe never overwrites or relinks them. It only records what it sees for that org as an observation.
 
-Harvest endpoints, by coverage:
+### Work queue (`open_items.kind`)
 
-| Connector | Listing endpoint | Live query | Covers |
-|---|---|---|---|
-| CKAN | `/api/3/action/package_search?rows=1000&start=` | DataStore `datastore_search(_sql)` | open.canada.ca, Données Québec, Toronto, BC, Ontario, Alberta… |
-| Dataverse | `/api/search?type=dataset&per_page=1000` | none (files) | Borealis, Abacus, U of T |
-| ArcGIS Hub | `/api/feed/dcat-us/1.1.json` or `/api/search/v1/collections/dataset/items` | FeatureServer `/query` | 148 orgs |
-| Socrata | `api.us.socrata.com/api/catalog/v1?domains=<host>` | SODA `/resource/<id>.json?$where=` | Edmonton, NS, Calgary… |
-| Opendatasoft | `/api/explore/v2.1/catalog/datasets` | Explore v2.1 `/records` | 3 orgs |
-| DCAT fallback | `/data.json`, `/catalog.jsonld`, sitemap | – | anything that exposes DCAT |
-| Bespoke | per-site | – | Figshare API, Birds Canada, Marine Data BC, NWT Geomatics |
+| Kind | Who resolves it |
+|---|---|
+| `needs_review` | A Claude session: verify, write the recipe, resolve. Escalate to `needs_human` if still unclear. |
+| `needs_human` | A person: documents, pages with no data, Esri folder selection, unreachable sites. |
+| `decision` | A person: project-level policy. |
+| `blocker`, `dead_link`, `data_error`, `platform_mismatch`, `needs_profiling` | Generated by the probe. Anyone may fix and resolve them. Auto items go `stale` when a re-probe stops seeing them. |
 
-CKAN + Dataverse (incl. Borealis) + ArcGIS Hub + Socrata cover ~90% of reported datasets; Figshare adds another 9%.
+`resolved` and `wontfix` carry a `resolution` and are never reopened automatically.
 
-## Non-standard sources
+## Pipeline
 
-42 orgs have no catalog API the probe recognizes. Each one gets profiled into an **archetype**, and the archetype decides the connector. The goal is to keep bespoke code to a few generic, config-driven connectors, with the per-site details stored in `sources.recipe`.
+1. **Sync** (`pnpm sync`): directory → `orgs`.
+2. **Probe** (`pnpm probe`): reachability, TLS, bot-block signatures (with a pause-and-retry for WAF challenges and a browser-UA comparison), robots.txt AI-agent rules, then a platform fingerprint via API calls: CKAN, ArcGIS Hub (with DCAT feed fallback), Socrata, Opendatasoft, Dataverse, GeoNetwork, ArcGIS Server, DCAT `data.json`. `API_HOME` maps known front-end hosts to their API host. Writes `sources`, `org_sources`, `observations`, `open_items`, `probes`.
+3. **Auto-profile** (`pnpm autoprofile`): for `needs_profiling` sources, reads the landing page and follows up to 4 same-host data pages. It fingerprints up to 4 linked hosts that look like portals, counts data, geo and document file links, tests API-looking links for JSON, and checks for script-heavy pages. Then it routes each source as below.
+4. **Review**: `needs_review` items by a Claude session, `needs_human` items by a maintainer. `pnpm profile-source` records the result as a curated source.
+5. **Harvest** (next): each source's connector writes `datasets` and `resources`, incrementally by modified date where the API supports it.
+6. **Classify resources**: normalize formats, assign a tier, check link health.
+7. **Index**: full-text search over datasets; embeddings later.
+8. **Enrich** (later): sample tabular resources for schema and row counts; extract text and tables from documents.
 
-| Archetype | What it looks like | Connector | Recipe holds | Candidates from the probe |
-|---|---|---|---|---|
-| `platform_api` | CKAN, Hub, Socrata, ODS, Dataverse, DCAT | per-platform, done by probe | scope filter | 196 orgs |
-| `known_api` | A documented public API that isn't a catalog platform | one small connector each | endpoint, paging, auth notes | StatCan WDS (11.5k tables), Bank of Canada Valet, GeoNetwork CSW (Marine Data BC), FRDR, geo.ca, CONP |
-| `esri_rest` | An ArcGIS Server services directory without a Hub catalog | `arcgis_rest`: walk `/arcgis/rest/services?f=json`, one dataset per layer, live query via `/query` | services root, folders to skip | Banff, GeoNB, Manitoba Land Initiative, DNV, NWT, Nanaimo |
-| `web_listing` | Static HTML pages linking to CSV/XLSX/ZIP/GTFS files | `web_listing`: bounded crawl (depth ≤ 2, same host), file links → resources, page sections → datasets | start URLs, include/exclude link patterns, depth | Saanich, Tribunals Ontario, London Transit (GTFS), OEB, Elections Canada, MPHEC, CRD, Whitehorse |
-| `js_app` | A single-page app; the HTML has no data links | inspect network calls in a browser to find the backing API, then reclassify into one of the archetypes above | the discovered endpoint | Red Deer, Windsor, NL Open Data, Gatineau, CIHI, Surrey, Hamilton |
-| `document_library` | Mostly PDFs or reports | `documents`: list files + metadata now; later download, extract text and tables, chunk and embed (tier `document`) | start URLs, file patterns, language | Saanich (partly), Metrolinx, OEB reports, Alberta publications inside CKAN |
-| `not_data` | A program page, a stats page, or a link to a third-party API list | mark `wontfix`, or override the URL to the real source | – | AMO, OCUL, CFL (publicapis.io link), Sault Ste Marie (GitHub page) |
-
-### Auto-profile routing (`pnpm autoprofile`)
+### Auto-profile routing
 
 | Result | Route |
 |---|---|
-| A known platform answers on the page's own host or a linked host, and no other org already uses it | **applied**: curated source, status `identified` |
-| A linked portal that other orgs also use (data.ontario.ca, open.canada.ca) | **applied** if the org is found inside it (CKAN `organization_autocomplete`); otherwise `needs_review` |
-| ArcGIS Server with a folder named like open data | **applied**, recipe restricted to those folders |
+| A known platform answers on a linked host that no other org uses | applied: curated source, status `identified` |
+| A linked portal that other orgs also use (data.ontario.ca, open.canada.ca) | applied if the org is found inside it (CKAN `organization_autocomplete`); otherwise `needs_review` |
+| ArcGIS Server with a folder named like open data | applied, recipe restricted to those folders |
 | ArcGIS Server with no such folder | `needs_human`: which folders are open data? |
 | JSON endpoints on data pages | `needs_review` (known_api) |
 | 3+ data files, outnumbering documents | `needs_review` (web_listing, draft recipe) |
 | 3+ documents, fewer data files | `needs_human` (document_library) |
-| Script-heavy page or API-looking links, no data | `needs_review` (js_app: inspect with a browser) |
+| Script-heavy page (10+ scripts) or API-looking links, no data | `needs_review` (js_app: inspect with a browser) |
 | Nothing found, or unreachable | `needs_human` |
 
-### Profiling loop
+Not yet checked by the auto-profile: `sitemap.xml`, CSW `GetCapabilities` on arbitrary hosts, OGC API `/collections`, GTFS feeds.
 
-1. **Auto-profile.** This is an extension of the probe for `needs_profiling` sources. It checks `sitemap.xml`, ArcGIS REST roots (`/arcgis/rest/services?f=json`, `/server/rest/services`), CSW `GetCapabilities`, OGC API `/collections`, and GTFS zips. It follows one level of same-host links and counts file types, then proposes an archetype and a draft recipe.
-2. **Review together, in batches, biggest first.** Confirm the archetype, fix the recipe, set `status` to `harvestable`, or close it as `wontfix` with a reason. Sites that need a real browser (JS apps) get an open item and are inspected by hand with the browser pane.
-3. **Record landscape facts while doing it.** For each source: what an agent needs to get the data (API / files / browser / none), formats, licence, whether it changes, and blockers. These go in `observations` under a `profile` key.
+## Connectors (planned)
 
-A source can mix archetypes. Example: a CKAN portal whose resources are all PDFs. Archetype describes how we list the source; tier (per resource) describes what the MCP can do with each item.
+Each connector implements:
 
-## Pipeline
+- `list_datasets(source) → iterator<Dataset>`, paged and incremental where possible
+- `get_dataset(source, id) → Dataset`
+- `query(resource, filters, fields, limit)` for `live_query` resources
 
-1. **Sync**: `pnpm sync` pulls the directory into `orgs`.
-2. **Probe**: `pnpm probe` checks reachability, robots.txt and the platform fingerprint, and writes `sources`, `observations` and `open_items`.
-3. **Profile**: classify the non-standard sources (see above) and write `archetype` and `recipe`.
-4. **Harvest**: run each source's connector into the `datasets` and `resources` tables. Incremental by modified date where the API supports it.
-5. **Classify resources**: normalize formats, assign a tier, check link health.
-6. **Index**: full-text search over datasets; embeddings later.
-7. **Enrich (later)**: sample tabular resources for schema and row counts; extract text and tables from documents.
+| Connector | Listing | Live query |
+|---|---|---|
+| `ckan` | `/api/3/action/package_search?rows=1000&start=` (+ `fq` scope) | DataStore `datastore_search(_sql)` |
+| `arcgis_hub` | `/api/search/v1/collections/dataset/items` or `/api/feed/dcat-us/1.1.json` | FeatureServer `/query` |
+| `socrata` | `/api/catalog/v1?domains=<host>` | SODA `/resource/<id>.json?$where=` |
+| `opendatasoft` | `/api/explore/v2.1/catalog/datasets` | Explore v2.1 `/records` |
+| `dataverse` | `/api/search?type=dataset&per_page=1000` (+ `subtree` scope) | none (files) |
+| `geonetwork` | CSW `GetRecords` or `/srv/api/search/records/_search` | none (links to services) |
+| `dcat` | `data.json` | none |
+| `arcgis_rest` | services directory, `recipe.folders` only | FeatureServer/MapServer `/query` |
+| `statcan_wds` | `getAllCubesListLite` | vector and coordinate queries; full-table CSV |
+| `web_listing` | crawl `recipe.start_urls`, match `recipe` patterns | none (files) |
+| `figshare` | `api.figshare.com/v2` search | none (files) |
 
 ## MCP surface (draft)
 
+TypeScript MCP server over the same DuckDB file.
+
 - `search_datasets(query, province?, org?, format?, tier?, updated_after?)`
-- `get_dataset(id)` — metadata, resources, tiers
-- `list_publishers(filters)` — directory data
-- `query_resource(resource_id, sql | filters)` — live API passthrough or DuckDB over a cached download
-- `preview_resource(resource_id, n)` — first rows / schema
+- `get_dataset(id)`: metadata, resources, tiers
+- `list_publishers(filters)`: directory data
+- `query_resource(resource_id, sql | filters)`: live API passthrough, or DuckDB over a cached download
+- `preview_resource(resource_id, n)`: first rows and schema
+
+## Decided
+
+- TypeScript throughout (Node 22, pnpm, tsx); DuckDB as the store.
+- One DuckDB file, published as GitHub release assets, outside git.
+- Probe etiquette: one request at a time per host, 500 ms apart, an identifying user agent.
 
 ## Open questions
 
-1. Language for connectors and MCP: Python (uv, DuckDB, httpx) or TypeScript (MCP SDK, deployable to Workers/Vercel)? The harvester and the MCP can differ.
-2. Where harvest shards and the DuckDB index live: GitHub release assets, R2/S3, or Hugging Face dataset.
-3. Federal portal (open.canada.ca, 34,844 datasets) also includes provincial/municipal federated records. Dedupe against those portals, or treat it as one more catalog?
-4. Should corrections (Calgary URL, Shawinigan) be sent upstream to the Open Data Society?
-5. Hosting: local stdio MCP first, or remote MCP from the start?
-
-## Next steps
-
-1. Write the probe script; run it over the 253 URLs (one GET per URL plus a few API fingerprint requests).
-2. Build `catalogs.jsonl` from probe results; collapse the 45 "published under" orgs onto their parent catalogs.
-3. CKAN connector first (open.canada.ca + Données Québec = ~36k datasets), then Dataverse, ArcGIS Hub, Socrata.
-4. DuckDB index + a minimal stdio MCP with `search_datasets` and `get_dataset`.
-
-## Reuse for other directories
-
-Everything after `orgs` is directory-agnostic: probe, fingerprints, auto-profile, archetypes and recipes, the review queue, findings, digest and DB publishing. A new directory (another country's meta-catalog, data.europa.eu publishers, a sector list) needs:
-
-1. **A sync adapter.** `src/cli/sync-directory.ts` is the only Canada-specific code. It extracts a CSV from this site's JS bundle and maps its bilingual columns. A new directory gets its own adapter that emits the same org record (`id`, `name`, `url`, `platform_label`, `org_type`, region fields, `dataset_count`).
-2. **A `directory_id` column** on `orgs` (and an `attrs json` column for directory-specific fields), so several directories can share one DB. Alternatively, one DB per directory, which already works today.
-3. **Host aliases as data, not code.** Move `API_HOME` in `src/fingerprint.ts` (front-end URL → API host) into a table.
-4. **Configurable digest grouping.** It groups by `province` and `org_type` today; make the dimensions a parameter.
-
-The platform fingerprints already cover the common international catalog stacks: CKAN, ArcGIS Hub/Server, Socrata, Opendatasoft, Dataverse, GeoNetwork, DCAT. Each new platform is one `try*` function in `src/fingerprint.ts`.
+1. Does robots.txt `Disallow: /` apply to documented public APIs? (Dataverse defaults; tracked as `decision:project:robots_api`.)
+2. open.canada.ca federates some provincial and municipal records. Dedupe against those portals, or treat it as one more catalog?
+3. Send directory corrections (Calgary, Shawinigan, Regina, wrong labels) upstream to the Society?
+4. MCP hosting: local stdio first, or remote from the start?
+5. Where harvest data lives once it outgrows a release asset: R2/S3 or a Hugging Face dataset.
