@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="t">
+  <title id="t">CODD AI: a cod blowing data bubbles</title>
+  <defs>
+    <clipPath id="disc"><circle cx="256" cy="256" r="236"/></clipPath>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E4F4FB"/>
+      <stop offset="1" stop-color="#B9DDEE"/>
+    </linearGradient>
+  </defs>
+
+  <!-- water disc -->
+  <circle cx="256" cy="256" r="236" fill="url(#water)"/>
+  <g clip-path="url(#disc)" opacity="0.55">
+    <path d="M20 400 Q90 380 160 400 T300 400 T440 400 T580 400 V520 H20 Z" fill="#9FCDE3"/>
+    <path d="M-20 430 Q50 412 120 430 T260 430 T400 430 T540 430 V520 H-20 Z" fill="#8BC2DC"/>
+  </g>
+
+  <!-- data bubbles -->
+  <g stroke="#2C6E91" stroke-width="5">
+    <circle cx="96" cy="206" r="10" fill="#FFFFFF" fill-opacity="0.75"/>
+    <circle cx="82" cy="168" r="15" fill="#FFFFFF" fill-opacity="0.75"/>
+    <circle cx="118" cy="104" r="40" fill="#FFFFFF"/>
+  </g>
+  <!-- bar chart in the big bubble -->
+  <g stroke="#26331F" stroke-width="3" stroke-linejoin="round">
+    <rect x="96" y="108" width="12" height="18" rx="2" fill="#2C6E91"/>
+    <rect x="112" y="92" width="12" height="34" rx="2" fill="#D80621"/>
+    <rect x="128" y="100" width="12" height="26" rx="2" fill="#8FA35E"/>
+  </g>
+  <path d="M90 128 H146" stroke="#26331F" stroke-width="4" stroke-linecap="round"/>
+
+  <g stroke="#26331F" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
+    <!-- tail -->
+    <path d="M384 246 L452 196 Q440 256 452 318 L384 270 Z" fill="#6E7F45"/>
+    <!-- dorsal fins (cod have three) -->
+    <path d="M180 214 Q186 132 242 200 Z" fill="#6E7F45"/>
+    <path d="M244 200 Q262 118 310 206 Z" fill="#6E7F45"/>
+    <path d="M312 210 Q340 146 368 228 Z" fill="#6E7F45"/>
+    <!-- anal fins (two) -->
+    <path d="M258 312 Q272 376 318 304 Z" fill="#6E7F45"/>
+    <path d="M324 300 Q344 356 370 282 Z" fill="#6E7F45"/>
+    <!-- pelvic fin -->
+    <path d="M160 298 Q152 334 190 312 Z" fill="#6E7F45"/>
+    <!-- body -->
+    <path d="M96 262 C118 212 190 188 272 194 C334 198 372 222 392 246 L392 270 C372 294 334 314 272 318 C190 322 120 304 96 262 Z" fill="#8FA35E"/>
+  </g>
+
+  <!-- belly -->
+  <path d="M103 268 C140 302 204 318 272 314 C330 310 366 292 389 270 C330 284 196 288 103 268 Z" fill="#F3EAD0"/>
+  <!-- speckles -->
+  <g fill="#5F6E3A">
+    <circle cx="210" cy="222" r="5"/><circle cx="238" cy="236" r="4"/><circle cx="262" cy="216" r="5"/>
+    <circle cx="292" cy="232" r="4"/><circle cx="318" cy="220" r="5"/><circle cx="344" cy="238" r="4"/>
+    <circle cx="226" cy="252" r="3.5"/><circle cx="276" cy="250" r="3.5"/><circle cx="330" cy="256" r="3.5"/>
+    <circle cx="190" cy="236" r="3.5"/><circle cx="360" cy="252" r="3.5"/>
+  </g>
+  <!-- lateral line -->
+  <path d="M176 246 C240 236 316 240 386 258" fill="none" stroke="#F3EAD0" stroke-width="5" stroke-linecap="round"/>
+
+  <g stroke="#26331F" stroke-width="7" stroke-linecap="round" fill="none">
+    <!-- body outline on top of belly -->
+    <path d="M96 262 C118 212 190 188 272 194 C334 198 372 222 392 246 L392 270 C372 294 334 314 272 318 C190 322 120 304 96 262 Z"/>
+    <!-- gill -->
+    <path d="M176 222 Q160 262 178 302" stroke-width="6"/>
+    <!-- mouth -->
+    <path d="M98 266 Q112 274 126 268" stroke-width="5"/>
+    <!-- chin barbel -->
+    <path d="M132 296 Q136 314 126 326" stroke-width="5"/>
+  </g>
+  <!-- pectoral fin -->
+  <path d="M192 264 Q218 244 240 270 Q216 288 192 264 Z" fill="#7C8E4E" stroke="#26331F" stroke-width="5" stroke-linejoin="round"/>
+  <!-- eye -->
+  <circle cx="140" cy="244" r="16" fill="#FFFFFF" stroke="#26331F" stroke-width="5"/>
+  <circle cx="136" cy="244" r="8" fill="#26331F"/>
+  <circle cx="133" cy="240" r="3" fill="#FFFFFF"/>
+
+  <!-- rim -->
+  <circle cx="256" cy="256" r="236" fill="none" stroke="#2C6E91" stroke-width="10"/>
+</svg>

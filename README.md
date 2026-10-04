@@ -1,8 +1,32 @@
+<div align="center">
+
+<img src="assets/codd.svg" alt="CODD AI logo: a cod blowing data bubbles" width="200">
+
 # CODD AI
 
-Canada Open Data Directory AI. A registry, a set of connectors, and (in progress) an MCP server that let AI agents find and query the datasets behind the [Canadian Open Data Directory](https://directory.opendatasociety.ca/directory).
+**Canada Open Data Directory AI**
 
-Built in collaboration with the Canada Open Data Society. [Baobab Tech](https://baobabtech.ai), a corporate member of the Society, develops and provides it at no cost. Code is MIT licensed.
+A registry, connectors and an MCP server so AI agents can find and query the open data behind the [Canadian Open Data Directory](https://directory.opendatasociety.ca/directory).
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-2C6E91.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=nodedotjs&logoColor=white)](package.json)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
+[![DuckDB](https://img.shields.io/badge/DuckDB-FFF000?logo=duckdb&logoColor=black)](src/db.ts)
+[![MCP](https://img.shields.io/badge/MCP-planned-8FA35E)](docs/PLAN.md#mcp-surface-draft)
+[![Status](https://img.shields.io/badge/status-early-orange)](NEXT.md)
+
+[![Portals](https://img.shields.io/badge/portals-253-D80621)](https://directory.opendatasociety.ca/directory)
+[![With a catalog API](https://img.shields.io/badge/identified_sources-210%2F253-2C6E91)](docs/PLAN.md)
+[![Database](https://img.shields.io/badge/database-db--latest-6E7F45)](https://github.com/baobab-tech/codd-ai/releases/tag/db-latest)
+[![Made in Canada](https://img.shields.io/badge/made_in-Canada_%F0%9F%8D%81-D80621)](https://opendatasociety.ca)
+
+[How it works](#how-it-works) · [Getting started](#getting-started) · [Design](docs/PLAN.md) · [Reuse it](REUSE.md) · [Work queue](NEXT.md)
+
+</div>
+
+---
+
+Built in collaboration with the [Canada Open Data Society](https://opendatasociety.ca). [Baobab Tech](https://baobabtech.ai), a corporate member of the Society, develops and provides it at no cost. Code is MIT licensed.
 
 ## The problem
 
@@ -59,7 +83,7 @@ pnpm digest                  # landscape digest to stdout
 
 ## The database
 
-All state lives in one DuckDB file, `db/codd.duckdb`. It is not committed. It is published as an asset on the [`db-latest` release](../../releases/tag/db-latest), with a dated `db-YYYYMMDD-HHMMSS` release kept for each snapshot.
+All state lives in one DuckDB file, `db/codd.duckdb`. It is not committed. It is published as an asset on the [`db-latest` release](https://github.com/baobab-tech/codd-ai/releases/tag/db-latest), with a dated `db-YYYYMMDD-HHMMSS` release kept for each snapshot.
 
 | Table | Holds |
 |---|---|
