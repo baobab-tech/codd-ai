@@ -9,6 +9,8 @@ Canada Open Data Directory AI: a registry, connectors, and an MCP server over th
 - `data/directory/` — raw CSV snapshot of the directory
 - `docs/PLAN.md` — data model, storage, connectors, pipeline
 - `NEXT.md` — where work left off
+- `CLAUDE.md` — session conventions: record findings, generate reports
+- `reports/` — digests and landscape reports
 
 ## Usage
 

@@ -14,7 +14,9 @@
     "typecheck": "tsc --noEmit",
     "db:publish": "tsx src/cli/db-publish.ts",
     "db:pull": "tsx src/cli/db-pull.ts",
-    "sql": "tsx src/cli/sql.ts"
+    "sql": "tsx src/cli/sql.ts",
+    "note": "tsx src/cli/note.ts",
+    "digest": "tsx src/cli/digest.ts"
   },
   "dependencies": {
     "@duckdb/node-api": "1.5.6-r.1",

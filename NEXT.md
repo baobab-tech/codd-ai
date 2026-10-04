@@ -21,10 +21,12 @@ Paused 2026-10-04. Start with `pnpm install && pnpm db:pull`.
 - Schema in `src/db.ts`. HTTP helper with bot-block detection in `src/http.ts`.
 - First DB published: `db-20261004-1706` (253 orgs, other tables empty).
 
-- `pnpm probe` fingerprints every org URL. Results go to `probes`, `sources`, `org_sources`, `observations` and `open_items`. First full run: 2026-10-04. Findings are in `docs/LANDSCAPE.md`.
+- `pnpm probe` fingerprints every org URL. Results go to `probes`, `sources`, `org_sources`, `observations` and `open_items`. First full run: 2026-10-04. Findings are in the `findings` table (`pnpm note --list`). `pnpm digest` collects everything a report needs; see CLAUDE.md, "Writing the landscape report".
 - `pnpm sql "<query>"` runs ad-hoc queries.
 - `org_overrides` holds our corrections to directory fields; the probe uses them over `orgs`. First entry: Regina → https://openregina.ca/ (CKAN, 1,379 datasets).
 - `sources.archetype` and `sources.recipe` record how to connect to non-standard sources. A re-probe preserves both. See "Non-standard sources" in `docs/PLAN.md`.
+
+- Session discoveries are recorded with `pnpm note`, and CLAUDE.md requires it. This session's 22 findings are backfilled. `docs/LANDSCAPE.md` was removed; its content is now in `findings`.
 
 ## Probe behaviour
 

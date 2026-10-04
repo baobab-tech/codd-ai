@@ -13,7 +13,7 @@ export const DB_PATH = process.env.CODD_DB ?? join(ROOT, "db/codd.duckdb");
 
 // Working state lives in DuckDB; `pnpm export` writes each table to registry/<table>.jsonl for git.
 // Tables listed here are exported/imported in this order.
-export const TABLES = ["orgs", "org_overrides", "sources", "org_sources", "connectors", "open_items", "observations", "probes"] as const;
+export const TABLES = ["orgs", "org_overrides", "sources", "org_sources", "connectors", "open_items", "observations", "findings", "probes"] as const;
 
 const SCHEMA = `
 -- One row per organization in the Canadian Open Data Directory. Overwritten by sync.
@@ -113,6 +113,20 @@ create table if not exists observations (
   evidence varchar,                -- URL or probe id
   observed_at timestamp,
   primary key (subject_type, subject_id, key)
+);
+
+-- Narrative discoveries: anything learned in a session that a report should mention. Append-only.
+-- Structured, machine-refreshed facts go in observations; human/agent insight goes here.
+create sequence if not exists findings_seq;
+create table if not exists findings (
+  id integer primary key default nextval('findings_seq'),
+  topic varchar not null,          -- platforms | counts | reachability | bot_blocking | robots | data_quality | access_patterns | formats | licensing | connectors | other
+  subject_type varchar,            -- org | source | connector | platform | project
+  subject_id varchar,
+  finding varchar not null,        -- one fact, written to be quoted in a report
+  evidence varchar,                -- URL, SQL query, or probe reference
+  author varchar,                  -- probe | claude | olivier
+  created_at timestamp default now()
 );
 
 -- Raw HTTP probe log. One row per request; latest per (url, check) kept.
