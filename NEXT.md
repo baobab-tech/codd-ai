@@ -47,7 +47,7 @@ needs_profiling 42 · dead_link 11 (Regina resolved) · platform_mismatch 12 · 
 
 1. **needs_human (11), for the maintainers:** run `pnpm items needs_human`. They cover document-heavy sources (Birds Canada, Nanaimo, MPHEC, Metrolinx, NL Stats), pages with no data found (Brandon, GeoNB, Nunavut, PEI GIS), CRD ArcGIS folder selection, and OCUL being unreachable.
 2. **needs_review (19), a Claude session can work these:**
-   - browser inspections: Bank of Canada Valet, CIHI, geo.ca, FRDR, CONP, NL Open Data, Gatineau, CMHC, Hamilton, Quinte West;
+   - browser inspections: Bank of Canada Valet, CFL (a publicapis.io link, likely not_data), CIHI, geo.ca, FRDR, CONP, NL Open Data, Gatineau, CMHC, Hamilton, Quinte West;
    - org scopes inside shared portals: AMO, Tribunals Ontario, Whitehorse, NWT, MLI;
    - file listings: London Transit, OEB, Sault Ste. Marie.
 3. **decision:** whether robots.txt applies to public APIs (Dataverse).
