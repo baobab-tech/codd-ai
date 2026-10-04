@@ -361,15 +361,23 @@ async function probeOrg(org: Org) {
 
 async function keepFirstSeen(rows: any[]) {
   for (const r of rows) {
-    const prev = await all<{ first_seen: string }>(conn, "select first_seen::varchar as first_seen from sources where id = $id", { id: r.id });
+    const prev = await all<{ first_seen: string; recipe: unknown; archetype: string | null }>(conn, "select first_seen::varchar as first_seen, recipe, archetype from sources where id = $id", { id: r.id });
     if (prev[0]?.first_seen) r.first_seen = prev[0].first_seen;
+    // Profiling output is hand/agent-curated; a re-probe must not drop it.
+    const prevRecipe = prev[0]?.recipe;
+    r.recipe = (typeof prevRecipe === "string" ? JSON.parse(prevRecipe) : prevRecipe) ?? r.recipe ?? null;
+    r.archetype = prev[0]?.archetype ?? r.archetype ?? (r.platform && r.platform !== "unknown" ? "platform_api" : null);
   }
   await upsert(conn, "sources", rows);
 }
 
 // ---- main ----
 
-let orgs = await all<Org>(conn, "select id, name_en, url, host, platform_label, relationship, dataset_count from orgs order by id");
+// Overrides win over the directory URL.
+let orgs = await all<Org>(conn, `
+  select o.id, o.name_en, coalesce(ov.value, o.url) as url, o.host, o.platform_label, o.relationship, o.dataset_count
+  from orgs o left join org_overrides ov on ov.org_id = o.id and ov.field = 'url'
+  order by o.id`);
 if (ONLY) orgs = orgs.filter((o) => ONLY.includes(o.id));
 orgs = orgs.slice(0, LIMIT);
 

@@ -23,6 +23,8 @@ Paused 2026-10-04. Start with `pnpm install && pnpm db:pull`.
 
 - `pnpm probe` fingerprints every org URL. Results go to `probes`, `sources`, `org_sources`, `observations` and `open_items`. First full run: 2026-10-04. Findings are in `docs/LANDSCAPE.md`.
 - `pnpm sql "<query>"` runs ad-hoc queries.
+- `org_overrides` holds our corrections to directory fields; the probe uses them over `orgs`. First entry: Regina → https://openregina.ca/ (CKAN, 1,379 datasets).
+- `sources.archetype` and `sources.recipe` record how to connect to non-standard sources. A re-probe preserves both. See "Non-standard sources" in `docs/PLAN.md`.
 
 ## Probe behaviour
 
@@ -33,15 +35,16 @@ Paused 2026-10-04. Start with `pnpm install && pnpm db:pull`.
 
 ## Open items (2026-10-04)
 
-needs_profiling 42 · dead_link 12 · platform_mismatch 12 · data_error 2 (Calgary no URL, Shawinigan wrong URL) · blocker 1 (CSA TLS)
+needs_profiling 42 · dead_link 11 (Regina resolved) · platform_mismatch 12 · data_error 2 (Calgary no URL, Shawinigan wrong URL) · blocker 1 (CSA TLS)
 
 ## Next steps
 
-1. Review with Olivier, gradually:
+1. Add the auto-profile pass for `needs_profiling` sources: sitemap, ArcGIS REST roots, CSW, OGC API, file-type counts. It proposes an archetype and a draft recipe.
+2. Review with Olivier, gradually:
    - the 42 `needs_profiling` sources, starting with the big ones (StatCan, Marine Data BC GeoNetwork, NWT Geomatics, CIHI, Surrey, Hamilton);
    - the 12 dead links: find the new URLs or mark them `wontfix`;
    - whether to respect robots.txt `Disallow: /` for API endpoints (the Dataverse defaults).
-2. Collapse the "published under" orgs. Données Québec is already scoped by CKAN `organization:`. Columbia Basin Water Hub, Niagara, Data Zone and Durham still need checking.
-3. Add the CanWIN count check: are its 48k records really datasets?
-4. Build the CKAN connector and harvest into `datasets` / `resources` tables. CKAN covers about 46 orgs.
-5. Build the ArcGIS Hub connector next (132 orgs), then Socrata, Dataverse and ODS.
+3. Collapse the "published under" orgs. Données Québec is already scoped by CKAN `organization:`. Columbia Basin Water Hub, Niagara, Data Zone and Durham still need checking.
+4. Add the CanWIN count check: are its 48k records really datasets?
+5. Build the CKAN connector and harvest into `datasets` / `resources` tables. CKAN covers about 46 orgs.
+6. Build the ArcGIS Hub connector next (132 orgs), then Socrata, Dataverse and ODS.

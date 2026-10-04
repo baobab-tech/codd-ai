@@ -13,7 +13,7 @@ export const DB_PATH = process.env.CODD_DB ?? join(ROOT, "db/codd.duckdb");
 
 // Working state lives in DuckDB; `pnpm export` writes each table to registry/<table>.jsonl for git.
 // Tables listed here are exported/imported in this order.
-export const TABLES = ["orgs", "sources", "org_sources", "connectors", "open_items", "observations", "probes"] as const;
+export const TABLES = ["orgs", "org_overrides", "sources", "org_sources", "connectors", "open_items", "observations", "probes"] as const;
 
 const SCHEMA = `
 -- One row per organization in the Canadian Open Data Directory. Overwritten by sync.
@@ -43,6 +43,16 @@ create table if not exists orgs (
   synced_at timestamp
 );
 
+-- Our corrections to directory fields. The orgs row keeps the directory value; probe and connectors read the override.
+create table if not exists org_overrides (
+  org_id varchar,
+  field varchar,                   -- url (more fields as needed)
+  value varchar,
+  note varchar,                    -- why, and who/what found it
+  created_at timestamp,
+  primary key (org_id, field)
+);
+
 -- A thing we can point a connector at: a portal, a scoped slice of a portal, a document library, an API.
 create table if not exists sources (
   id varchar primary key,
@@ -59,6 +69,10 @@ create table if not exists sources (
 );
 
 alter table sources add column if not exists parent_id varchar;  -- portal_scope -> its portal
+-- How to connect when platform + base_url + scope isn't enough: connector config written during profiling
+-- (start URLs, link patterns, service roots, discovered backend endpoints, auth notes...).
+alter table sources add column if not exists recipe json;
+alter table sources add column if not exists archetype varchar;  -- platform_api | known_api | esri_rest | web_listing | js_app | document_library | not_data
 
 create table if not exists org_sources (
   org_id varchar,
