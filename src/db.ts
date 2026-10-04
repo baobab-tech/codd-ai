@@ -167,3 +167,11 @@ export async function openItem(conn: DuckDBConnection, item: OpenItem): Promise<
 export async function observe(conn: DuckDBConnection, subject_type: string, subject_id: string, key: string, value: unknown, evidence?: string): Promise<void> {
   await upsert(conn, "observations", [{ subject_type, subject_id, key, value, evidence: evidence ?? null, observed_at: new Date().toISOString() }]);
 }
+
+/** Flush the WAL into the main file and release the lock, so the file can be copied or replaced. */
+export async function closeDb(conn: DuckDBConnection): Promise<void> {
+  await conn.run("checkpoint");
+  conn.closeSync();
+  instance?.closeSync();
+  instance = undefined;
+}
