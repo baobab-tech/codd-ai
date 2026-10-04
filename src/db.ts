@@ -72,6 +72,7 @@ alter table sources add column if not exists parent_id varchar;  -- portal_scope
 -- How to connect when platform + base_url + scope isn't enough: connector config written during profiling
 -- (start URLs, link patterns, service roots, discovered backend endpoints, auth notes...).
 alter table sources add column if not exists recipe json;
+alter table sources add column if not exists curated boolean default false;  -- set by profiling; probe never deletes or relinks curated sources
 alter table sources add column if not exists archetype varchar;  -- platform_api | known_api | esri_rest | web_listing | js_app | document_library | not_data
 
 create table if not exists org_sources (

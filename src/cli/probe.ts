@@ -265,8 +265,11 @@ async function resetOrg(org: Org) {
   await all(conn, `update open_items set status = 'stale', updated_at = now() where status = 'open' and kind in ${AUTO_KINDS} and (
       (subject_type = 'org' and subject_id = $id) or
       (subject_type = 'source' and subject_id in (select source_id from org_sources where org_id = $id)))`, { id: org.id });
-  await all(conn, "delete from org_sources where org_id = $id", { id: org.id });
+  await all(conn, "delete from org_sources where org_id = $id and source_id not in (select id from sources where curated)", { id: org.id });
 }
+
+const hasCurated = async (orgId: string) =>
+  (await all(conn, "select 1 from org_sources os join sources s on s.id = os.source_id where os.org_id = $id and s.curated", { id: orgId })).length > 0;
 
 async function probeOrg(org: Org) {
   await resetOrg(org);
@@ -349,7 +352,8 @@ async function probeOrg(org: Org) {
     return { id: org.id, outcome: det.platform, count: det.scope_count ?? det.count, reported: org.dataset_count };
   }
 
-  // Nothing machine-readable found: record as a website that needs a human/agent look.
+  // Nothing machine-readable found: record as a website that needs a human/agent look, unless profiling already did.
+  if (await hasCurated(org.id)) return { id: org.id, outcome: "curated", reported: org.dataset_count };
   if (!blockedHard && root.status === 200) {
     const sid = `web:${new URL(finalUrl).host}${new URL(finalUrl).pathname.replace(/\/$/, "")}`;
     await keepFirstSeen([{ id: sid, kind: html && html.pdf_links > 5 ? "document_library" : "website", platform: "unknown", base_url: finalUrl, scope: null, connector_id: null, status: "needs_profiling", dataset_count: null, first_seen: t, last_probed: t, notes: html ? `pdf_links=${html.pdf_links} tabular_links=${html.tabular_links} hints=${html.hints.join("|")}` : null, parent_id: null }]);
@@ -365,6 +369,7 @@ async function keepFirstSeen(rows: any[]) {
     if (prev[0]?.first_seen) r.first_seen = prev[0].first_seen;
     // Profiling output is hand/agent-curated; a re-probe must not drop it.
     const prevRecipe = prev[0]?.recipe;
+    r.curated = false;
     r.recipe = (typeof prevRecipe === "string" ? JSON.parse(prevRecipe) : prevRecipe) ?? r.recipe ?? null;
     r.archetype = prev[0]?.archetype ?? r.archetype ?? (r.platform && r.platform !== "unknown" ? "platform_api" : null);
   }
@@ -402,7 +407,7 @@ await upsert(conn, "probes", probeRows.splice(0));
 const tally: Record<string, number> = {};
 for (const r of results) tally[r.outcome] = (tally[r.outcome] ?? 0) + 1;
 // Sources no org points at any more (e.g. a website replaced by a detected API).
-await all(conn, "delete from sources where id not in (select source_id from org_sources) and id not in (select parent_id from sources where parent_id is not null)");
+await all(conn, "delete from sources where not coalesce(curated, false) and id not in (select source_id from org_sources) and id not in (select parent_id from sources where parent_id is not null)");
 console.log("\noutcomes:", tally);
 console.log("open items:", await all(conn, "select kind, count(*)::int as n from open_items where status='open' group by kind order by n desc"));
 await closeDb(conn);

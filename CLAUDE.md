@@ -34,7 +34,9 @@ pnpm note --list [--topic robots]
 
 Topics: platforms, counts, reachability, bot_blocking, robots, data_quality, access_patterns, formats, licensing, connectors, decisions, other. Subject types: org, source, connector, platform, project.
 
-Also: corrections → `org_overrides`; anything unresolved → `open_items`; how to connect → `sources.recipe` / `archetype`.
+Also: corrections → `org_overrides`; anything unresolved → `open_items`; how to connect → `pnpm profile-source` (writes `sources` with `archetype`, `recipe`, `curated=true`).
+
+pnpm reserves some script names (`import`, `profile`, ...). Check with `pnpm <name>` before adding a script.
 
 ## Writing the landscape report
 
@@ -53,6 +55,7 @@ Follow the writing style in the user's global CLAUDE.md.
 | `pnpm sync` | Re-pull the directory into `orgs` |
 | `pnpm probe [--only id,id]` | Fingerprint org URLs → `sources`, `observations`, `open_items`, `probes` |
 | `pnpm note` | Record or list findings |
+| `pnpm profile-source <org> --id --archetype --base-url [...]` | Record a profiled source (curated; the probe won't overwrite it) and close its needs_profiling item |
 | `pnpm digest` | Report input digest |
 | `pnpm sql "..."` | Ad-hoc SQL |
 | `pnpm db:pull` / `db:publish` | Fetch / publish the DB |

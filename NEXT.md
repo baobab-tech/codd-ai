@@ -28,6 +28,8 @@ Paused 2026-10-04. Start with `pnpm install && pnpm db:pull`.
 
 - Session discoveries are recorded with `pnpm note`, and CLAUDE.md requires it. This session's 22 findings are backfilled. `docs/LANDSCAPE.md` was removed; its content is now in `findings`.
 
+- Profiling pilot (2026-10-04), 5 sources recorded with `pnpm profile-source`: StatCan WDS (known_api, 8,271 tables), Marine Data BC (GeoNetwork, 1,713), Saanich (web_listing), Banff (esri_rest, BanffOpenData folder only), Red Deer (custom JSON API). Curated sources survive re-probes (tested).
+
 ## Probe behaviour
 
 - Requests to one host run one at a time, 500 ms apart. Up to 8 orgs are probed in parallel.
@@ -41,7 +43,11 @@ needs_profiling 42 · dead_link 11 (Regina resolved) · platform_mismatch 12 · 
 
 ## Next steps
 
-1. Add the auto-profile pass for `needs_profiling` sources: sitemap, ArcGIS REST roots, CSW, OGC API, file-type counts. It proposes an archetype and a draft recipe.
+1. Logic changes from the pilot, pending Olivier's OK:
+   - add GeoNetwork (`/geonetwork/srv/api/site`, CSW hits) and ArcGIS Server (`/arcgis/rest/services?f=json`) to the probe fingerprints;
+   - stop using the PDF-link count to decide "document_library" (PDFs are often metadata sidecars);
+   - add a "follow one dataset page" step to the auto-profile, which is how Red Deer's API was found.
+   Then run the auto-profile on the remaining 37 `needs_profiling` sources.
 2. Review with Olivier, gradually:
    - the 42 `needs_profiling` sources, starting with the big ones (StatCan, Marine Data BC GeoNetwork, NWT Geomatics, CIHI, Surrey, Hamilton);
    - the 12 dead links: find the new URLs or mark them `wontfix`;
