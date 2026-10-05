@@ -42,11 +42,7 @@ An agent can't use "the directory" directly. It needs to know, for each source, 
 
 ## How it works
 
-```
-directory ─sync─▶ orgs ─probe─▶ sources ─autoprofile─▶ applied / needs_review / needs_human ─review─▶ curated sources ─harvest─▶ datasets ─▶ MCP
-                   │              │                                                                                    (next)        (planned)
-            org_overrides         └──▶ observations · open_items · findings · probes  (landscape analysis)
-```
+<p align="center"><img src="assets/pipeline.svg" alt="Pipeline: directory → orgs (pnpm sync) → sources (pnpm probe) → auto-profile (applied, needs review, needs human) → curated sources → datasets (next) → MCP server (planned). org_overrides holds corrections; observations, open_items, findings and probes feed the landscape analysis." width="100%"></p>
 
 1. **Sync** (`pnpm sync`). The directory has no API. Its org list is a CSV embedded in the site's JS bundle. The sync walks the bundle, extracts the CSV, and loads it into `orgs` unchanged. Corrections live in `org_overrides`, never in `orgs`.
 2. **Probe** (`pnpm probe`). For each org URL: reachability, redirects, TLS, bot-protection signatures, and robots.txt rules for AI crawlers. Then it fingerprints the platform through its API, not the HTML: CKAN, ArcGIS Hub, ArcGIS Server, Socrata, Opendatasoft, Dataverse, GeoNetwork, DCAT. The result is a `sources` row (platform, API base, scope inside a shared portal, live dataset count). Problems become `open_items`.
@@ -127,6 +123,6 @@ Only the directory sync is specific to this directory. [REUSE.md](REUSE.md) expl
 
 ## Licence
 
-Code: [MIT](LICENSE), © 2026 Baobab Tech.
+Code: [MIT](LICENSE).
 
 `data/directory/` holds a snapshot of the Canadian Open Data Directory, maintained by the Canadian Open Data Society. Datasets reached through the connectors stay under their publishers' own licences.
