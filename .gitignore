@@ -6,3 +6,4 @@ data/harvest/
 *.duckdb.wal
 node_modules/
 db/
+data/describe/
