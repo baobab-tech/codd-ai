@@ -2,6 +2,18 @@
 
 Registry, connectors and (later) an MCP server over the portals in the Canadian Open Data Directory. Public repo, MIT licensed, built by Baobab Tech with the Canadian Open Data Society. TypeScript (Node 22, pnpm, tsx); state lives in one DuckDB file.
 
+## Three parts
+
+1. **Registry** (Part 1): discovery and conversion. All current code.
+2. **Serve** (Part 2): query connectors and the MCP server.
+3. **Steward** (Part 3): the maintenance agent. Until it exists, a Claude session following this file does its job.
+
+It's one package for now, but keep the boundaries in `docs/PLAN.md` ("Three parts") so the parts can be split later:
+- parts share data through the DB, not imports;
+- shared code stays in `src/db.ts`, `src/http.ts` and `src/fingerprint.ts`;
+- Serve never writes registry tables;
+- keep catalog listing (Part 1) and query-time access (Part 2) in separate modules.
+
 ## Start of session
 
 ```bash
@@ -74,13 +86,21 @@ Rule of thumb: anything that is not clearly a data catalog, an API or a list of 
 
 ## Writing the landscape report
 
-When asked for a report:
+The published report is `reports/LANDSCAPE.md`, linked from the top of the README. To refresh it:
 
-1. `pnpm digest --out reports/digest-$(date +%F).md` collects aggregates, observations, open items and every finding into one file.
-2. Read the digest. Write the report to `reports/landscape-$(date +%F).md`. Default length is one page. It covers what the directory is, how agent-friendly the portals are (APIs vs. files vs. browser-only), what blocks agents, data quality, and the top recommendations.
-3. Use only numbers that appear in the digest. Cite the subject for specific claims.
+1. Run `pnpm digest --out reports/digest-$(date +%F).md`. Keep older digests; they are the dated evidence.
+2. Rewrite `reports/LANDSCAPE.md` from the new digest: update the "As of" date and point its digest links at the new file. Keep the structure: summary, platforms, who is ready, access patterns, barriers, robots.txt, directory data quality, recommendations, open questions, method.
+3. Use only numbers that appear in the digest. Findings carry the numbers from the day they were written; prefer the digest's aggregates when they differ.
+4. Update the "Landscape report" table and the `identified_sources` badge in `README.md` to match.
 
 Follow the writing style in the user's global CLAUDE.md.
+
+## Docs layout
+
+- `README.md`: short landing page (problem, report headline, diagram, getting started).
+- `docs/HOW-IT-WORKS.md`: pipeline steps, landscape tables, database, commands, crawling etiquette.
+- `docs/PLAN.md`: data model, statuses, routing, connectors, open questions.
+- `REUSE.md`: fork guide. `NEXT.md`: working log and queue.
 
 ## Commands
 

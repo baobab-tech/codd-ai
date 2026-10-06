@@ -23,7 +23,8 @@ const q = (sql: string) => all(conn, sql);
 
 // Org → its effective platform (top-level source or "none").
 const ORG_PLATFORM = `
-  select o.*, coalesce(min(s.platform), 'none') as platform, max(s.archetype) as archetype
+  select o.*, coalesce(min(s.platform), 'none') as platform, max(s.archetype) as archetype,
+    max(case when s.status in ('identified', 'harvestable', 'harvested') then 1 else 0 end) as ready
   from orgs o left join org_sources os on os.org_id = o.id left join sources s on s.id = os.source_id
   group by all`;
 
@@ -39,6 +40,14 @@ h("Platforms (detected by API)");
 table(await q(`select platform, count(*)::int as orgs, round(100.0 * count(*) / sum(count(*)) over (), 1) as pct_orgs
   from (${ORG_PLATFORM}) group by 1 order by orgs desc`));
 
+h("Org readiness (best source status per org)");
+table(await q(`with best as (
+    select o.id, max(case when s.status in ('identified','harvestable','harvested') then 3 when s.status in ('proposed','needs_human') then 2 when s.id is not null then 1 else 0 end) as r
+    from orgs o left join org_sources os on os.org_id = o.id left join sources s on s.id = os.source_id group by 1)
+  select case r when 3 then 'source identified (API or confirmed recipe)' when 2 then 'in review queue' when 1 then 'other' else 'no source (dead link or no URL)' end as readiness,
+    count(*)::int as orgs, round(100.0 * count(*) / sum(count(*)) over (), 1) as pct
+  from best group by r order by r desc`));
+
 h("Live dataset counts (top-level sources)");
 table(await q(`select platform, count(*)::int as sources, sum(dataset_count)::int as live_datasets
   from sources where parent_id is null and platform <> 'unknown' group by 1 order by live_datasets desc nulls last`));
@@ -49,11 +58,11 @@ table(await q(`select o.name_en as org, s.platform, s.dataset_count as live, o.d
   where s.dataset_count is not null order by abs(s.dataset_count - coalesce(o.dataset_count, 0)) desc limit 10`));
 
 h("API coverage by org type");
-table(await q(`select org_type, count(*)::int as orgs, sum(case when platform not in ('none','unknown') then 1 else 0 end)::int as with_api
+table(await q(`select org_type, count(*)::int as orgs, sum(ready)::int as source_identified
   from (${ORG_PLATFORM}) group by 1 order by orgs desc`));
 
 h("API coverage by province");
-table(await q(`select coalesce(province, '?') as province, count(*)::int as orgs, sum(case when platform not in ('none','unknown') then 1 else 0 end)::int as with_api
+table(await q(`select coalesce(province, '?') as province, count(*)::int as orgs, sum(ready)::int as source_identified
   from (${ORG_PLATFORM}) group by 1 order by orgs desc`));
 
 h("Source archetypes and status");

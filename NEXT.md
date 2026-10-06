@@ -11,7 +11,9 @@ Working log. Last updated 2026-10-04. Start a session with `pnpm install && pnpm
 | Profiling | 5 sources profiled by hand (StatCan WDS, Marine Data BC GeoNetwork, Saanich, Banff, Red Deer). Auto-profile run on 36: 7 applied, 19 `needs_review`, 11 `needs_human`. |
 | Sources | 210 orgs have an identified or harvestable source, 30 are in the review queue, 13 have a dead link or no URL. |
 | Findings | 36 recorded (`pnpm note --list`). |
+| Landscape report | `reports/LANDSCAPE.md`, from `reports/digest-2026-10-04.md`. |
 | Connectors, harvest, MCP | Not started. |
+| Project parts | Registry (Part 1, in progress), Serve (Part 2, planned), Steward (Part 3, planned). One package for now; boundaries in `docs/PLAN.md`. |
 
 Latest DB: the `db-latest` release (`pnpm db:pull`).
 
@@ -34,7 +36,7 @@ Latest DB: the `db-latest` release (`pnpm db:pull`).
 ## Log
 
 - 2026-10-03: repo created; directory extraction; plan.
-- 2026-10-04: TypeScript + DuckDB; DB published as release assets; probe over 253 orgs (WAF, TLS, robots.txt, bot-block handling); Regina override; findings table, `pnpm note`, `pnpm digest`; profiling pilot (5 sources) and curated sources; GeoNetwork and ArcGIS Server fingerprints; auto-profile with review routing; `pnpm items`; public-repo cleanup (README, MIT licence, REUSE.md).
+- 2026-10-04: TypeScript + DuckDB; DB published as release assets; probe over 253 orgs (WAF, TLS, robots.txt, bot-block handling); Regina override; findings table, `pnpm note`, `pnpm digest`; profiling pilot (5 sources) and curated sources; GeoNetwork and ArcGIS Server fingerprints; auto-profile with review routing; `pnpm items`; public-repo cleanup (README, MIT licence, REUSE.md); logo and pipeline diagram; first landscape report (`reports/LANDSCAPE.md`); README split into a short landing page plus `docs/HOW-IT-WORKS.md`.
 
 ## Gotchas
 

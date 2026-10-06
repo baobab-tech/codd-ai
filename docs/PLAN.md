@@ -1,6 +1,24 @@
 # CODD AI design
 
-Status: discovery and profiling work; connectors, harvest and the MCP server are next. Last updated 2026-10-04. Current work queue: [NEXT.md](../NEXT.md). Reusing this for another directory: [REUSE.md](../REUSE.md).
+Status: Part 1 (registry) discovery and profiling work; harvest is next, then Part 2 (serve) and Part 3 (steward). Last updated 2026-10-04. Current work queue: [NEXT.md](../NEXT.md). Reusing this for another directory: [REUSE.md](../REUSE.md).
+
+## Three parts
+
+CODD AI has three parts. They live in one package for now. Code is written so each part can be split out later (for example, to open-source the MCP server on its own) without untangling.
+
+| Part | Role | Reads | Writes | Code today | Status |
+|---|---|---|---|---|---|
+| **1. Registry**: discovery and conversion | Turn the directory into a registry of sources an agent can use: sync, probe, profile, then harvest each source's catalog into dataset and resource records | the directory, portal APIs and pages | `orgs`, `sources`, `observations`, `open_items`, `findings`, later `datasets` / `resources` | `src/cli/*`, `src/fingerprint.ts` | sync, probe and profiling done; harvest next |
+| **2. Serve**: connectors and MCP | Answer agent questions: search the registry, then fetch or query the data through the source's API or a downloaded file | registry and harvested tables | its own cache and query logs only | not started | planned |
+| **3. Steward**: maintenance agent | Keep the registry current and add to it: re-sync the directory, re-probe for dead URLs and platform changes, harvest new and changed datasets, work the `needs_review` queue, parse unstructured sources (documents, file listings) into records, propose directory corrections | everything Part 1 reads, plus the registry | the same tables as Part 1, using the same commands | not started; today a Claude session following `CLAUDE.md` plays this role | planned |
+
+Boundaries to keep:
+
+- **The database is the contract.** The parts talk through the DuckDB tables, not by importing each other's code.
+- **Shared code** is `src/db.ts` (schema and access), `src/http.ts` (polite fetching, block detection) and `src/fingerprint.ts` (platform detection). These would become a `core` package.
+- **Part 2 never writes registry tables.** It treats the registry as read-only and keeps its own cache.
+- **Part 3 does no crawling of its own.** It calls Part 1's commands (`sync`, `probe`, `autoprofile`, harvest) and adds scheduling, queue work and parsing on top. `needs_human` items stay with people.
+- **Connectors have two sides.** Listing a source's catalog belongs to Part 1 (harvest). Querying a resource at question time belongs to Part 2. Keep the two in separate modules even when they cover the same platform.
 
 ## The directory
 
