@@ -31,10 +31,11 @@ Then:
 
 ## Where things stand
 
-- Done: directory sync, probe (platform fingerprints via API), auto-profile with review routing, and the review tooling.
-- Done: CKAN harvest into `datasets` / `resources` (101,484 unique records), with readiness views.
-- Next: answers to the `needs_human` queue, harvest the other platforms, refresh the landscape report. Serve (MCP) comes after.
-- When a source republishes another portal, set `sources.recipe.mirrors` to that portal's source id; `harvest:load` then marks the copies `duplicate_of` and the readiness views skip them.
+`NEXT.md` has the full state, the ordered next steps, decisions and gotchas. In short:
+
+- Done: directory sync, probe, auto-profile with review routing, review tooling; CKAN harvest (101,484 unique records) and ArcGIS Hub harvest (25,341 unique items) into `datasets` / `resources`, with readiness views and licence / record-kind classification.
+- Next: refresh the landscape report; write the `needs_human` brief with links; harvest the remaining platforms (validate each lister on a few sources first); theme normalization. Serve (MCP) comes after.
+- Deduplication: a source that republishes another portal sets `sources.recipe.mirrors`; ArcGIS items shown on several Hub sites are deduped by item id. Both set `datasets.duplicate_of`, and the views skip duplicates.
 - Keep `NEXT.md` current: update it at the end of every session with what changed and what is next.
 
 ## State lives in the DB, not in git
@@ -49,6 +50,7 @@ Tables, by purpose (schema in `src/db.ts`):
 - `observations`: structured facts refreshed by the probe and auto-profile (access, robots, landing, api, autoprofile).
 - `open_items`: the work queue. Close items with `status='resolved'` or `'wontfix'` and a `resolution`.
 - `findings`: narrative discoveries for the landscape report. Append-only.
+- `datasets` / `resources`: harvested catalog records (Part 1). `record_kind` (data, document or app), `licence_class`, `best_tier`, `duplicate_of`, `extras`. Raw platform records sit in local shards `data/harvest/<source>/raw.jsonl.gz` (not published).
 
 ## Record what you learn
 

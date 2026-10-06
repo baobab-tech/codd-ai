@@ -82,6 +82,14 @@ table(await q(`select s.platform, r.record_kind, count(*)::int as records, round
   round(avg(r.discoverable)*100,1) as discoverable, round(avg(r.themed)*100,1) as themed
   from v_dataset_readiness r join sources s on s.id = r.source_id group by all order by s.platform, records desc`));
 
+h("CKAN DataStore coverage by portal (data records)");
+table(await q(`select d.source_id, count(distinct d.id)::int as data_records,
+  count(distinct d.id) filter (where r.datastore)::int as with_datastore,
+  round(100.0 * count(distinct d.id) filter (where r.datastore) / count(distinct d.id), 1) as pct_datastore,
+  count(distinct d.id) filter (where r.tier = 'live_query' and not r.datastore)::int as other_live_api
+  from datasets d join resources r on r.dataset_id = d.id join sources s on s.id = d.source_id
+  where s.platform = 'ckan' and d.duplicate_of is null and d.record_kind = 'data' group by 1 order by data_records desc`));
+
 h("Licence classes of data records, by platform");
 table(await q(`with x as (select s.platform, d.licence_class, count(*) as n from datasets d join sources s on s.id = d.source_id
     where d.duplicate_of is null and d.record_kind = 'data' group by 1, 2)
