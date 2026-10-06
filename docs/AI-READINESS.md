@@ -25,7 +25,7 @@ Computed per dataset in view `v_dataset_readiness` (1 = yes), from columns the h
 |---|---|---|
 | Machine-readable | best resource is tabular, geo or live-query | `datasets.best_tier`, `resources.tier`, `resources.format` |
 | Live query | at least one resource can be queried server-side | `best_tier = 'live_query'`, `resources.datastore` |
-| Open licence | platform marks it open, or the licence names an open licence | `is_open`, `licence`, `licence_url` |
+| Open licence | `licence_class = 'open'`. Classes: open, non_commercial, no_derivatives, restricted (Crown copyright, "Access Only", "not open"), unclear (terms-of-use link, custom text), none. Rules live in `src/cli/harvest-load.ts` and rerun on every load. | `licence_class`, `licence`, `licence_url`, `is_open` |
 | Described | description of 100+ characters | `description` |
 | Discoverable | 3+ tags or keywords | `tags`, `keywords` |
 | Fresh | metadata modified in the last 12 months | `modified` |
@@ -35,6 +35,14 @@ Computed per dataset in view `v_dataset_readiness` (1 = yes), from columns the h
 | Bilingual | title in English and French | `bilingual` |
 | Update cadence | declared frequency | `frequency` |
 | Access level | open, restricted, under review (where declared) | `access_level` |
+
+`record_kind` separates **data** from **documents** (CKAN `info`/publications, Hub PDFs and document links) and **apps** (Hub web maps, dashboards, pages). Compare readiness on data records; report documents and apps as their own share of each catalogue.
+
+Duplicates are excluded from every view: CKAN mirrors (`sources.recipe.mirrors`) and ArcGIS items shown on several Hub sites (item ids are global; the copy on the site of the item's owner is kept). `publisher` / `publisher_title` is the organization that owns each record, which on shared portals and Hub sites is often not the site's own org.
+
+Platform-specific signals go in `datasets.extras`, for example ArcGIS `scoreCompleteness` (Esri's own metadata score), `numViews` and `orgId`.
+
+A dimension a platform does not expose (Hub: contact, bilingual title) is stored as null and left out of averages instead of counting as "no".
 
 Resource tiers: `live_query`, `tabular_file`, `geo_file`, `document`, `link_only` (`src/harvest/tier.ts`).
 

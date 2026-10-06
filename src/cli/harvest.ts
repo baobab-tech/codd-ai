@@ -11,6 +11,7 @@ import { createGzip } from "node:zlib";
 import pLimit from "p-limit";
 import { ROOT, all, closeDb, db } from "../db.js";
 import { listCkan } from "../connectors/list/ckan.js";
+import { listArcgisHub } from "../connectors/list/arcgis-hub.js";
 
 const arg = (k: string) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : undefined);
 const PLATFORM = arg("--platform") ?? "ckan";
@@ -19,7 +20,7 @@ const PARALLEL = Number(arg("--parallel") ?? 4);
 
 export const shardDir = (sourceId: string) => join(ROOT, "data/harvest", sourceId.replace(/[^a-zA-Z0-9._-]+/g, "_"));
 
-const LISTERS: Record<string, typeof listCkan> = { ckan: listCkan };
+const LISTERS: Record<string, typeof listCkan> = { ckan: listCkan, arcgis_hub: listArcgisHub };
 
 const conn = await db();
 let sources = await all<{ id: string; base_url: string; platform: string; dataset_count: number | null }>(conn,

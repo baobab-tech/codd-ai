@@ -76,6 +76,21 @@ table(await q(`select count(*)::int as datasets, round(avg(machine_readable)*100
   round(avg(fresh)*100,1) as metadata_fresh_12mo, round(avg(themed)*100,1) as themed, round(avg(spatial)*100,1) as spatial,
   round(avg(contact)*100,1) as contact, round(avg(bilingual)*100,1) as bilingual from v_dataset_readiness`));
 
+h("Readiness by platform and record kind (unique records, %)");
+table(await q(`select s.platform, r.record_kind, count(*)::int as records, round(avg(r.machine_readable)*100,1) as machine_readable,
+  round(avg(r.live_query)*100,1) as live_query, round(avg(r.open_licence)*100,1) as open_licence, round(avg(r.described)*100,1) as described,
+  round(avg(r.discoverable)*100,1) as discoverable, round(avg(r.themed)*100,1) as themed
+  from v_dataset_readiness r join sources s on s.id = r.source_id group by all order by s.platform, records desc`));
+
+h("Licence classes of data records, by platform");
+table(await q(`with x as (select s.platform, d.licence_class, count(*) as n from datasets d join sources s on s.id = d.source_id
+    where d.duplicate_of is null and d.record_kind = 'data' group by 1, 2)
+  select platform, licence_class, n::int as records, round(100.0 * n / sum(n) over (partition by platform), 1) as pct from x order by platform, records desc`));
+
+h("Most common unclassified or missing licence labels (data records)");
+table(await q(`select left(coalesce(licence, '(empty)'), 70) as licence, licence_class, count(*)::int as records from datasets
+  where duplicate_of is null and record_kind = 'data' and licence_class in ('unclear', 'none') group by all order by records desc limit 10`));
+
 h("Best resource tier per dataset");
 table(await q(`select coalesce(best_tier, '(no resources)') as best_tier, count(*)::int as datasets, round(100.0 * count(*) / sum(count(*)) over (), 1) as pct
   from datasets where duplicate_of is null group by 1 order by 2 desc`));
@@ -92,8 +107,8 @@ table(await q(`select id as source, harvested_count as records, round(share_mach
 h("Record types by source (platform's own type field)");
 table(await q(`select source_id, type, count(*)::int as records from datasets where duplicate_of is null group by all having count(*) >= 50 order by source_id, records desc`));
 
-h("Mirrors");
-table(await q(`select source_id, count(*)::int as mirrored_records from datasets where duplicate_of is not null group by 1`));
+h("Duplicates (mirrors and items shown on several Hub sites)");
+table(await q(`select s.platform, count(*)::int as duplicate_records, count(distinct d.source_id)::int as sources from datasets d join sources s on s.id = d.source_id where d.duplicate_of is not null group by 1`));
 
 h("Source archetypes and status");
 table(await q(`select coalesce(archetype, '(unprofiled)') as archetype, status, count(*)::int as sources from sources group by all order by sources desc`));

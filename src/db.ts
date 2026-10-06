@@ -150,7 +150,10 @@ alter table datasets add column if not exists resource_count integer;
 alter table datasets add column if not exists formats json;         -- distinct normalized resource formats
 alter table datasets add column if not exists best_tier varchar;    -- most capable resource tier
 alter table datasets add column if not exists access_level varchar;
-alter table datasets add column if not exists duplicate_of varchar;  -- set when the source mirrors another portal (sources.recipe.mirrors) and the record exists there -- open / restricted / under review, where declared
+alter table datasets add column if not exists duplicate_of varchar;
+alter table datasets add column if not exists extras json;
+alter table datasets add column if not exists licence_class varchar;  -- open | non_commercial | no_derivatives | restricted | unclear | none (classify step in harvest:load)
+alter table datasets add column if not exists record_kind varchar;    -- data | document | app (classify step in harvest:load)           -- platform-specific signals (ArcGIS: orgId, owner, numViews, scoreCompleteness)  -- set when the source mirrors another portal (sources.recipe.mirrors) and the record exists there -- open / restricted / under review, where declared
 
 -- Downloadable or queryable things inside a dataset.
 create table if not exists resources (
@@ -183,17 +186,18 @@ create table if not exists findings (
 
 -- AI-readiness views (docs/AI-READINESS.md). Recomputed on every query; the report reads these.
 create or replace view v_dataset_readiness as
-select d.id, d.source_id, d.publisher, d.title, d.best_tier,
+select d.id, d.source_id, d.publisher, d.title, d.best_tier, d.record_kind, d.licence_class,
   (d.best_tier in ('live_query', 'tabular_file', 'geo_file'))::int as machine_readable,
   (d.best_tier = 'live_query')::int as live_query,
-  (coalesce(d.is_open, false) or d.licence ilike '%open%' or d.licence ilike '%cc-by%' or d.licence ilike '%creative commons%' or d.licence ilike '%odc%')::int as open_licence,
+  (d.licence_class = 'open')::int as open_licence,
   (length(coalesce(d.description, '')) >= 100)::int as described,
   (coalesce(json_array_length(d.tags), 0) + coalesce(json_array_length(d.keywords), 0) >= 3)::int as discoverable,
   (try_cast(d.modified as timestamp) >= now() - interval 1 year)::int as fresh,
   (coalesce(json_array_length(d.themes), 0) > 0)::int as themed,
-  coalesce(d.has_spatial, false)::int as spatial,
-  coalesce(d.has_contact, false)::int as contact,
-  coalesce(d.bilingual, false)::int as bilingual
+  -- null when the platform doesn't expose the field; avg() then ignores it instead of counting it as a no
+  d.has_spatial::int as spatial,
+  d.has_contact::int as contact,
+  d.bilingual::int as bilingual
 from datasets d
 where d.duplicate_of is null;
 
