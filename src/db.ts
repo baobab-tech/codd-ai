@@ -13,7 +13,7 @@ export const DB_PATH = process.env.CODD_DB ?? join(ROOT, "db/codd.duckdb");
 
 // Working state lives in DuckDB; `pnpm export` writes each table to registry/<table>.jsonl for git.
 // Tables listed here are exported/imported in this order.
-export const TABLES = ["orgs", "org_overrides", "sources", "org_sources", "connectors", "open_items", "observations", "findings", "probes"] as const;
+export const TABLES = ["orgs", "org_overrides", "sources", "org_sources", "connectors", "open_items", "observations", "findings", "datasets", "resources", "probes"] as const;
 
 const SCHEMA = `
 -- One row per organization in the Canadian Open Data Directory. Overwritten by sync.
@@ -73,6 +73,8 @@ alter table sources add column if not exists parent_id varchar;  -- portal_scope
 -- (start URLs, link patterns, service roots, discovered backend endpoints, auth notes...).
 alter table sources add column if not exists recipe json;
 alter table sources add column if not exists curated boolean default false;  -- set by profiling; probe never deletes or relinks curated sources
+alter table sources add column if not exists harvested_at timestamp;
+alter table sources add column if not exists harvested_count integer;
 alter table sources add column if not exists archetype varchar;  -- platform_api | known_api | esri_rest | web_listing | js_app | document_library | not_data
 
 create table if not exists org_sources (
@@ -116,6 +118,55 @@ create table if not exists observations (
   primary key (subject_type, subject_id, key)
 );
 
+-- Harvested catalog records (Part 1: registry). One row per dataset in a source's catalog.
+-- Datasets belong to the top-level source they were listed from; publisher identifies the org inside a shared portal.
+create table if not exists datasets (
+  id varchar primary key,          -- <source_id>|<native_id>
+  source_id varchar not null,
+  native_id varchar not null,      -- platform id (CKAN package id, Hub item id, ...)
+  name varchar,                    -- slug, where the platform has one
+  title varchar,
+  description varchar,
+  publisher varchar,               -- org slug inside the portal (CKAN organization.name)
+  publisher_title varchar,
+  type varchar,                    -- platform's record type (CKAN: dataset, info, publication, ...)
+  tags json,
+  licence varchar,
+  landing_url varchar,
+  created varchar,
+  modified varchar,
+  harvested_at timestamp
+);
+-- AI-readiness fields, normalized across platforms (see docs/AI-READINESS.md).
+alter table datasets add column if not exists themes json;          -- portal groups / subjects / topic categories / Hub categories
+alter table datasets add column if not exists keywords json;        -- free keywords beyond tags (CKAN fluent keywords)
+alter table datasets add column if not exists frequency varchar;    -- declared update frequency
+alter table datasets add column if not exists has_spatial boolean;  -- spatial extent or geographic coverage declared
+alter table datasets add column if not exists bilingual boolean;    -- title present in both en and fr
+alter table datasets add column if not exists is_open boolean;      -- platform says the licence is open (CKAN isopen)
+alter table datasets add column if not exists licence_url varchar;
+alter table datasets add column if not exists has_contact boolean;  -- maintainer or author contact present
+alter table datasets add column if not exists resource_count integer;
+alter table datasets add column if not exists formats json;         -- distinct normalized resource formats
+alter table datasets add column if not exists best_tier varchar;    -- most capable resource tier
+alter table datasets add column if not exists access_level varchar;
+alter table datasets add column if not exists duplicate_of varchar;  -- set when the source mirrors another portal (sources.recipe.mirrors) and the record exists there -- open / restricted / under review, where declared
+
+-- Downloadable or queryable things inside a dataset.
+create table if not exists resources (
+  id varchar primary key,          -- <dataset_id>|<native_id or index>
+  dataset_id varchar not null,
+  source_id varchar not null,
+  name varchar,
+  url varchar,
+  format varchar,                  -- normalized upper-case (CSV, XLSX, SHP, PDF, ...)
+  mimetype varchar,
+  size bigint,
+  datastore boolean,               -- CKAN DataStore: queryable via datastore_search
+  tier varchar,                    -- live_query | tabular_file | geo_file | document | link_only
+  modified varchar
+);
+
 -- Narrative discoveries: anything learned in a session that a report should mention. Append-only.
 -- Structured, machine-refreshed facts go in observations; human/agent insight goes here.
 create sequence if not exists findings_seq;
@@ -129,6 +180,35 @@ create table if not exists findings (
   author varchar,                  -- probe | claude | maintainer handle
   created_at timestamp default now()
 );
+
+-- AI-readiness views (docs/AI-READINESS.md). Recomputed on every query; the report reads these.
+create or replace view v_dataset_readiness as
+select d.id, d.source_id, d.publisher, d.title, d.best_tier,
+  (d.best_tier in ('live_query', 'tabular_file', 'geo_file'))::int as machine_readable,
+  (d.best_tier = 'live_query')::int as live_query,
+  (coalesce(d.is_open, false) or d.licence ilike '%open%' or d.licence ilike '%cc-by%' or d.licence ilike '%creative commons%' or d.licence ilike '%odc%')::int as open_licence,
+  (length(coalesce(d.description, '')) >= 100)::int as described,
+  (coalesce(json_array_length(d.tags), 0) + coalesce(json_array_length(d.keywords), 0) >= 3)::int as discoverable,
+  (try_cast(d.modified as timestamp) >= now() - interval 1 year)::int as fresh,
+  (coalesce(json_array_length(d.themes), 0) > 0)::int as themed,
+  coalesce(d.has_spatial, false)::int as spatial,
+  coalesce(d.has_contact, false)::int as contact,
+  coalesce(d.bilingual, false)::int as bilingual
+from datasets d
+where d.duplicate_of is null;
+
+create or replace view v_source_readiness as
+select s.id, s.platform, s.archetype, s.status,
+  (s.archetype in ('platform_api', 'known_api', 'esri_rest') and s.status in ('identified', 'harvestable', 'harvested'))::int as catalog_api,
+  s.dataset_count, s.harvested_count,
+  avg(r.machine_readable) as share_machine_readable,
+  avg(r.live_query) as share_live_query,
+  avg(r.open_licence) as share_open_licence,
+  avg(r.described) as share_described,
+  avg(r.fresh) as share_fresh
+from sources s left join v_dataset_readiness r on r.source_id = s.id
+where s.parent_id is null
+group by all;
 
 -- Raw HTTP probe log. One row per request; latest per (url, check) kept.
 create table if not exists probes (
@@ -179,6 +259,17 @@ async function upsertNow(conn: DuckDBConnection, table: string, rows: object[]):
   } finally {
     rmSync(file, { force: true });
   }
+}
+
+/** Bulk-load an NDJSON (optionally .gz) file into a table, casting each column to the table's type. */
+export async function loadJsonl(conn: DuckDBConnection, table: string, file: string): Promise<number> {
+  return serial(async () => {
+    const cols = (await conn.runAndReadAll(`select column_name as name, data_type as type from information_schema.columns where table_name = '${table}' order by ordinal_position`)).getRowObjectsJson() as { name: string; type: string }[];
+    const spec = cols.map((c) => `'${c.name}': '${c.type === "JSON" ? "JSON" : "VARCHAR"}'`).join(", ");
+    const select = cols.map((c) => `"${c.name}"::${c.type} as "${c.name}"`).join(", ");
+    const r = await conn.runAndReadAll(`insert or replace into ${table} select ${select} from read_json('${file}', format='newline_delimited', columns={${spec}}, maximum_object_size=67108864)`);
+    return Number((r.getRowObjectsJson()[0] as { Count?: number })?.Count ?? 0);
+  });
 }
 
 export interface OpenItem {

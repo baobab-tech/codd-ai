@@ -6,6 +6,8 @@
  *   pnpm profile-source <org_id> --id geonetwork:soggy2.zoology.ubc.ca/geonetwork --archetype platform_api --platform geonetwork \
  *     --base-url https://... [--connector geonetwork] [--count 1713] [--status harvestable] [--kind portal] \
  *     [--recipe '{"csw":"..."}'] [--notes "..."] [--role primary]
+ *     [--scope '{"ckan_fq":"organization:x"}' --parent ckan:portal.host]   (an org's slice of a shared portal)
+ *     [--replaces <old_source_id>]   (supersede an earlier curated/proposed source for this org)
  */
 import { all, db, upsert } from "../db.js";
 
@@ -28,21 +30,29 @@ const platform = opt("--platform") ?? "unknown";
 
 await upsert(conn, "sources", [{
   id,
-  kind: opt("--kind") ?? (archetype === "document_library" ? "document_library" : archetype === "web_listing" ? "website" : "api"),
+  kind: opt("--kind") ?? (opt("--parent") ? "portal_scope" : archetype === "document_library" ? "document_library" : archetype === "web_listing" ? "website" : "api"),
   platform,
   base_url: baseUrl,
-  scope: null,
+  scope: opt("--scope") ? JSON.parse(opt("--scope")!) : null,
   connector_id: archetype === "not_data" ? null : (opt("--connector") ?? (archetype === "platform_api" ? platform : archetype)),
   status: opt("--status") ?? (archetype === "not_data" ? "not_data" : "harvestable"),
   dataset_count: opt("--count") ? Number(opt("--count")) : null,
   first_seen: prev?.first_seen ?? now,
   last_probed: now,
   notes: opt("--notes") ?? null,
-  parent_id: null,
+  parent_id: opt("--parent") ?? null,
   recipe: opt("--recipe") ? JSON.parse(opt("--recipe")!) : null,
   curated: true,
   archetype,
 }]);
+
+// --replaces: an earlier curated or proposed source for this org that this one supersedes.
+const replaces = opt("--replaces");
+if (replaces && replaces !== id) {
+  await all(conn, "update open_items set status = 'resolved', resolution = $r, updated_at = now() where subject_id = $sid and kind in ('needs_review', 'needs_profiling') and status in ('open', 'stale')", { r: `superseded by ${id} (${archetype})`, sid: replaces });
+  await all(conn, "delete from org_sources where org_id = $org and source_id = $sid", { org: orgId, sid: replaces });
+  await all(conn, "delete from sources where id = $sid and id not in (select source_id from org_sources)", { sid: replaces });
+}
 
 // Swap the probe's placeholder for the curated source.
 const placeholders = await all<{ source_id: string }>(conn, "select os.source_id from org_sources os join sources s on s.id = os.source_id where os.org_id = $org and s.status = 'needs_profiling' and not coalesce(s.curated, false)", { org: orgId });

@@ -1,6 +1,6 @@
 # Next
 
-Working log. Last updated 2026-10-04. Start a session with `pnpm install && pnpm db:pull`, then `pnpm items`.
+Working log. Last updated 2026-10-06. Start a session with `pnpm install && pnpm db:pull`, then `pnpm items`.
 
 ## State
 
@@ -10,33 +10,36 @@ Working log. Last updated 2026-10-04. Start a session with `pnpm install && pnpm
 | Probe | Done (2026-10-04). Platform fingerprints for CKAN, ArcGIS Hub/Server, Socrata, ODS, Dataverse, GeoNetwork, DCAT. |
 | Profiling | 5 sources profiled by hand (StatCan WDS, Marine Data BC GeoNetwork, Saanich, Banff, Red Deer). Auto-profile run on 36: 7 applied, 19 `needs_review`, 11 `needs_human`. |
 | Sources | 210 orgs have an identified or harvestable source, 30 are in the review queue, 13 have a dead link or no URL. |
-| Findings | 36 recorded (`pnpm note --list`). |
-| Landscape report | `reports/LANDSCAPE.md`, from `reports/digest-2026-10-04.md`. |
-| Connectors, harvest, MCP | Not started. |
+| Findings | 59 recorded (`pnpm note --list`). |
+| Landscape report | `reports/LANDSCAPE.md`, from `reports/digest-2026-10-04.md`. Due a refresh from `reports/digest-2026-10-06.md`, which adds dataset-level readiness. |
+| AI readiness | Dimensions and capture map in `docs/AI-READINESS.md`; SQL views `v_dataset_readiness`, `v_source_readiness`. |
+| Harvest | CKAN done (2026-10-06): 12 portals, 149,366 records, 101,484 unique after removing the CanWIN mirror of open.canada.ca; 645,852 resources. Raw records kept in `data/harvest/`. Other platforms next. |
+| Serve (connectors, MCP) | Not started. |
 | Project parts | Registry (Part 1, in progress), Serve (Part 2, planned), Steward (Part 3, planned). One package for now; boundaries in `docs/PLAN.md`. |
 
 Latest DB: the `db-latest` release (`pnpm db:pull`).
 
 ## Queue
 
-1. **needs_human (11), for the maintainers.** Run `pnpm items needs_human`.
-   - Document-heavy sources: Birds Canada, Nanaimo, MPHEC, Metrolinx, NL Statistics. Ingest the documents, look elsewhere for data, or skip?
-   - No data found: Brandon, GeoNB, Nunavut, PEI GIS.
+1. **needs_human (13), for the maintainers.** Run `pnpm items needs_human`.
+   - Document-heavy sources: Birds Canada, Nanaimo, MPHEC, Metrolinx, NL Statistics.
+   - No data found: Brandon, GeoNB, Nunavut, PEI GIS; OCUL unreachable.
    - Capital Regional District: which ArcGIS Server folders are open data?
-   - OCUL: page unreachable.
+   - CONP: research data with ethics-approval terms. Include?
+   - CFL: third-party, key-gated API. Skip?
 2. **decision (1):** does robots.txt `Disallow` apply to public APIs (Dataverse defaults)?
-3. **needs_review (19), a Claude session can work these.** Run `pnpm items needs_review`.
-   - Browser inspections: Bank of Canada (Valet API), CFL (a publicapis.io link, likely not_data), CIHI, geo.ca, FRDR, CONP, NL Open Data, Gatineau, CMHC, Hamilton, Quinte West.
-   - Org scopes inside shared portals: AMO and Tribunals Ontario (data.ontario.ca), Whitehorse and NWT Geomatics (open.canada.ca), Manitoba Land Initiative (data.winnipeg.ca, probably only a reference).
-   - File listings to confirm: London Transit, OEB, Sault Ste. Marie.
-4. **Probe items:** 12 dead links, 13 platform mismatches, 2 data errors (Calgary has no URL; Shawinigan's URL is wrong), 1 blocker (Canadian Space Agency TLS).
-5. **Build the CKAN connector** and harvest into `datasets` / `resources`. Then ArcGIS Hub, Socrata, Dataverse, ODS, GeoNetwork, `arcgis_rest` (folder-restricted), StatCan WDS and `web_listing`.
-6. **MCP server** (TypeScript) over the harvested tables.
+3. **needs_review:** empty (worked 2026-10-06; 19 sources profiled).
+4. **Harvest the other platforms:** ArcGIS Hub (131 sources), Socrata, Dataverse, Opendatasoft, GeoNetwork, DCAT, then known APIs (StatCan WDS, Valet, GeoCore, OAI-PMH) and `web_listing` sources from their recipes.
+5. **Refresh `reports/LANDSCAPE.md`** with dataset-level readiness.
+6. **Theme normalization** (`theme_map`), per `docs/AI-READINESS.md`.
+7. **Probe items:** 11 dead links, 13 platform mismatches, 2 data errors, 3 blockers (CSA TLS, Hamilton Cloudflare, Quinte West broken Hub).
+8. **Serve:** connectors (query side) and the MCP server.
 
 ## Log
 
 - 2026-10-03: repo created; directory extraction; plan.
 - 2026-10-04: TypeScript + DuckDB; DB published as release assets; probe over 253 orgs (WAF, TLS, robots.txt, bot-block handling); Regina override; findings table, `pnpm note`, `pnpm digest`; profiling pilot (5 sources) and curated sources; GeoNetwork and ArcGIS Server fingerprints; auto-profile with review routing; `pnpm items`; public-repo cleanup (README, MIT licence, REUSE.md); logo and pipeline diagram; first landscape report (`reports/LANDSCAPE.md`); README split into a short landing page plus `docs/HOW-IT-WORKS.md`.
+- 2026-10-06: three-part structure documented; CKAN harvest (`pnpm harvest`, `harvest:load`, raw shards); `datasets`/`resources` tables with AI-readiness fields; mirror handling (CanWIN); readiness views and `docs/AI-READINESS.md`; `needs_review` queue cleared (19 profiled, `profile-source --replaces/--scope/--parent`); 23 new findings.
 
 ## Gotchas
 

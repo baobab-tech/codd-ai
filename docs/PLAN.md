@@ -1,6 +1,6 @@
 # CODD AI design
 
-Status: Part 1 (registry) discovery and profiling work; harvest is next, then Part 2 (serve) and Part 3 (steward). Last updated 2026-10-04. Current work queue: [NEXT.md](../NEXT.md). Reusing this for another directory: [REUSE.md](../REUSE.md).
+Status: Part 1 (registry) discovery, profiling and the CKAN harvest work; other platforms' harvest next, then Part 2 (serve) and Part 3 (steward). Last updated 2026-10-04. Current work queue: [NEXT.md](../NEXT.md). Reusing this for another directory: [REUSE.md](../REUSE.md).
 
 ## Three parts
 
@@ -98,7 +98,7 @@ Everything lives in one DuckDB file, published as GitHub release assets (`pnpm d
 
 `pnpm digest` collects aggregates, observations, open items and findings into one markdown input for the landscape report.
 
-Harvested `datasets` and `resources` will go in the same DB. If it outgrows a single release asset, harvest data moves to per-source Parquet files next to it.
+`datasets` and `resources` hold harvested catalog records (`pnpm harvest` writes `data/harvest/<source>/` shards with raw records; `pnpm harvest:load` loads them). A source that republishes another portal sets `recipe.mirrors`; its copies get `duplicate_of` and are excluded from readiness views. If the DB outgrows a single release asset, harvest data moves to per-source Parquet files next to it.
 
 ### Source status
 

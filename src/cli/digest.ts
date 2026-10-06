@@ -65,6 +65,36 @@ h("API coverage by province");
 table(await q(`select coalesce(province, '?') as province, count(*)::int as orgs, sum(ready)::int as source_identified
   from (${ORG_PLATFORM}) group by 1 order by orgs desc`));
 
+h("Harvest coverage");
+table(await q(`select s.platform, count(*)::int as sources_harvested, sum(s.harvested_count)::int as records,
+  (select count(*)::int from datasets d join sources x on x.id = d.source_id where x.platform = s.platform and d.duplicate_of is null) as unique_records
+  from sources s where s.harvested_at is not null group by 1 order by records desc`));
+
+h("Dataset readiness (unique harvested records, % of datasets)");
+table(await q(`select count(*)::int as datasets, round(avg(machine_readable)*100,1) as machine_readable, round(avg(live_query)*100,1) as live_query,
+  round(avg(open_licence)*100,1) as open_licence, round(avg(described)*100,1) as described, round(avg(discoverable)*100,1) as discoverable,
+  round(avg(fresh)*100,1) as metadata_fresh_12mo, round(avg(themed)*100,1) as themed, round(avg(spatial)*100,1) as spatial,
+  round(avg(contact)*100,1) as contact, round(avg(bilingual)*100,1) as bilingual from v_dataset_readiness`));
+
+h("Best resource tier per dataset");
+table(await q(`select coalesce(best_tier, '(no resources)') as best_tier, count(*)::int as datasets, round(100.0 * count(*) / sum(count(*)) over (), 1) as pct
+  from datasets where duplicate_of is null group by 1 order by 2 desc`));
+
+h("Top resource formats");
+table(await q(`select r.format, r.tier, count(*)::int as resources from resources r join datasets d on d.id = r.dataset_id
+  where d.duplicate_of is null group by all order by resources desc limit 15`));
+
+h("Readiness by harvested source (% of its unique datasets)");
+table(await q(`select id as source, harvested_count as records, round(share_machine_readable*100) as machine_readable, round(share_live_query*100) as live_query,
+  round(share_open_licence*100) as open_licence, round(share_described*100) as described, round(share_fresh*100) as metadata_fresh
+  from v_source_readiness where harvested_count is not null order by harvested_count desc`));
+
+h("Record types by source (platform's own type field)");
+table(await q(`select source_id, type, count(*)::int as records from datasets where duplicate_of is null group by all having count(*) >= 50 order by source_id, records desc`));
+
+h("Mirrors");
+table(await q(`select source_id, count(*)::int as mirrored_records from datasets where duplicate_of is not null group by 1`));
+
 h("Source archetypes and status");
 table(await q(`select coalesce(archetype, '(unprofiled)') as archetype, status, count(*)::int as sources from sources group by all order by sources desc`));
 

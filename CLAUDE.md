@@ -32,7 +32,9 @@ Then:
 ## Where things stand
 
 - Done: directory sync, probe (platform fingerprints via API), auto-profile with review routing, and the review tooling.
-- Next: work the `needs_review` queue, get answers to the `needs_human` queue, then build connectors (CKAN first) and harvest into `datasets` / `resources`. The MCP server comes after.
+- Done: CKAN harvest into `datasets` / `resources` (101,484 unique records), with readiness views.
+- Next: answers to the `needs_human` queue, harvest the other platforms, refresh the landscape report. Serve (MCP) comes after.
+- When a source republishes another portal, set `sources.recipe.mirrors` to that portal's source id; `harvest:load` then marks the copies `duplicate_of` and the readiness views skip them.
 - Keep `NEXT.md` current: update it at the end of every session with what changed and what is next.
 
 ## State lives in the DB, not in git
@@ -49,6 +51,8 @@ Tables, by purpose (schema in `src/db.ts`):
 - `findings`: narrative discoveries for the landscape report. Append-only.
 
 ## Record what you learn
+
+The project's purpose includes reporting on the **AI readiness** of Canadian open data. `docs/AI-READINESS.md` defines the dimensions and where each is captured. When you discover something, put it where that file says: structured facts in tables or observations, narrative in `findings`. Later reports, including visuals and grouped breakdowns, are generated from these without re-crawling. Keep raw platform records when harvesting.
 
 Anything discovered in a session that a landscape report should mention goes into `findings`, before the session ends. This covers: how a portal really works, a blocker, a data-quality problem, a count that surprised us, an access pattern, a decision the maintainers made. One fact per finding, written so it can be quoted.
 
@@ -100,6 +104,7 @@ Follow the writing style in the user's global CLAUDE.md.
 - `README.md`: short landing page (problem, report headline, diagram, getting started).
 - `docs/HOW-IT-WORKS.md`: pipeline steps, landscape tables, database, commands, crawling etiquette.
 - `docs/PLAN.md`: data model, statuses, routing, connectors, open questions.
+- `docs/AI-READINESS.md`: readiness dimensions, where each is captured, groupings, report types.
 - `REUSE.md`: fork guide. `NEXT.md`: working log and queue.
 
 ## Commands
@@ -111,8 +116,9 @@ Follow the writing style in the user's global CLAUDE.md.
 | `pnpm note` | Record or list findings |
 | `pnpm autoprofile [--only ...] [--dry-run]` | Profile `needs_profiling` sources and route each to applied / needs_review / needs_human |
 | `pnpm items [kind]` / `pnpm items resolve <id> "why"` | Work queue |
-| `pnpm profile-source <org> --id --archetype --base-url [...]` | Record a profiled source (curated; the probe won't overwrite it) and close its needs_profiling item |
+| `pnpm profile-source <org> --id --archetype --base-url [--recipe --scope --parent --replaces ...]` | Record a profiled source (curated; the probe won't overwrite it), close its profiling items, supersede an earlier source |
 | `pnpm digest` | Report input digest |
+| `pnpm harvest [--platform ckan] [--only ...]` / `pnpm harvest:load` | Fetch catalogs into `data/harvest/` shards (raw + mapped); load into `datasets` / `resources` |
 | `pnpm sql "..."` | Ad-hoc SQL |
 | `pnpm db:pull` / `db:publish` | Fetch / publish the DB |
 | `pnpm db:export` / `db:import` | Optional JSONL round-trip of the small tables for a readable diff |

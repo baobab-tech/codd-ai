@@ -5,7 +5,7 @@
  *   pnpm db:publish [-m "note"]
  */
 import { execFileSync } from "node:child_process";
-import { createReadStream, createWriteStream, writeFileSync } from "node:fs";
+import { createReadStream, createWriteStream, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { createGzip } from "node:zlib";
@@ -21,13 +21,20 @@ const note = process.argv.includes("-m") ? process.argv[process.argv.indexOf("-m
 const conn = await db();
 const counts: Record<string, number> = {};
 for (const t of TABLES) counts[t] = Number((await all<{ n: number }>(conn, `select count(*) as n from ${t}`))[0].n);
+// Publish a compacted copy: DuckDB keeps freed pages after deletes, so copy into a fresh file.
+const COMPACT = join(ROOT, "db/codd.compact.duckdb");
+rmSync(COMPACT, { force: true });
+await conn.run(`attach '${COMPACT}' as compact`);
+await conn.run("copy from database codd to compact");
+await conn.run("detach compact");
 await closeDb(conn);
 
 const now = new Date();
 const tag = `db-${now.toISOString().slice(0, 19).replace(/[-:]/g, "").replace("T", "-")}`;
 const manifest = { tag, published_at: now.toISOString(), git_sha: execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim(), note, counts };
 writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + "\n");
-await pipeline(createReadStream(DB_PATH), createGzip({ level: 9 }), createWriteStream(ASSET));
+await pipeline(createReadStream(COMPACT), createGzip({ level: 6 }), createWriteStream(ASSET));
+rmSync(COMPACT, { force: true });
 
 const body = `${note ? note + "\n\n" : ""}\`\`\`json\n${JSON.stringify(counts, null, 2)}\n\`\`\``;
 gh("release", "create", tag, ASSET, MANIFEST, "--title", tag, "--notes", body, "--latest=false");

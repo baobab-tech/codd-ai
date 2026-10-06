@@ -26,7 +26,9 @@
     "note": "tsx src/cli/note.ts",
     "digest": "tsx src/cli/digest.ts",
     "profile-source": "tsx src/cli/profile.ts",
-    "autoprofile": "tsx src/cli/autoprofile.ts"
+    "autoprofile": "tsx src/cli/autoprofile.ts",
+    "harvest": "tsx src/cli/harvest.ts",
+    "harvest:load": "tsx src/cli/harvest-load.ts"
   },
   "dependencies": {
     "@duckdb/node-api": "1.5.6-r.1",
