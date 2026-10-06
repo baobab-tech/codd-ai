@@ -1,6 +1,6 @@
 # CODD AI design
 
-Status: Part 1 (registry) discovery, profiling and the CKAN harvest work; other platforms' harvest next, then Part 2 (serve) and Part 3 (steward). Last updated 2026-10-04. Current work queue: [NEXT.md](../NEXT.md). Reusing this for another directory: [REUSE.md](../REUSE.md).
+Status: Part 1 (registry) discovery, profiling and the CKAN and ArcGIS Hub harvests work; other platforms' harvest next, then Part 2 (serve) and Part 3 (steward). Last updated 2026-10-06. Current work queue: [NEXT.md](../NEXT.md). Reusing this for another directory: [REUSE.md](../REUSE.md).
 
 ## Three parts
 
@@ -8,7 +8,7 @@ CODD AI has three parts. They live in one package for now. Code is written so ea
 
 | Part | Role | Reads | Writes | Code today | Status |
 |---|---|---|---|---|---|
-| **1. Registry**: discovery and conversion | Turn the directory into a registry of sources an agent can use: sync, probe, profile, then harvest each source's catalog into dataset and resource records | the directory, portal APIs and pages | `orgs`, `sources`, `observations`, `open_items`, `findings`, later `datasets` / `resources` | `src/cli/*`, `src/fingerprint.ts` | sync, probe and profiling done; harvest next |
+| **1. Registry**: discovery and conversion | Turn the directory into a registry of sources an agent can use: sync, probe, profile, then harvest each source's catalog into dataset and resource records | the directory, portal APIs and pages | `orgs`, `sources`, `observations`, `open_items`, `findings`, `datasets` / `resources` | `src/cli/*`, `src/fingerprint.ts`, `src/connectors/list/*` | sync, probe and profiling done; CKAN and Hub harvested, other platforms next |
 | **2. Serve**: connectors and MCP | Answer agent questions: search the registry, then fetch or query the data through the source's API or a downloaded file | registry and harvested tables | its own cache and query logs only | not started | planned |
 | **3. Steward**: maintenance agent | Keep the registry current and add to it: re-sync the directory, re-probe for dead URLs and platform changes, harvest new and changed datasets, work the `needs_review` queue, parse unstructured sources (documents, file listings) into records, propose directory corrections | everything Part 1 reads, plus the registry | the same tables as Part 1, using the same commands | not started; today a Claude session following `CLAUDE.md` plays this role | planned |
 
@@ -52,7 +52,7 @@ The probe detects platforms through their APIs instead. Detected numbers, which 
 
 1. **Organization**: a publisher, from the directory (`orgs`). Corrections go in `org_overrides`.
 2. **Source**: one thing a connector can list, meaning a platform, a base URL and an optional scope. Examples: `ckan:www.donneesquebec.ca#organization:ville-de-laval`, `esri_rest:maps.banff.ca/arcgis/BanffOpenData`. Many orgs can share a source's parent portal. `org_sources` links orgs to sources.
-3. **Dataset → Resource** (next): harvested from sources. A dataset has metadata (title, description, tags, licence, dates, spatial extent). A resource is a downloadable or queryable thing (CSV, GeoJSON, Feature Service, PDF, API).
+3. **Dataset → Resource**: harvested from sources (CKAN and ArcGIS Hub so far). A dataset has metadata (title, description, tags, licence, dates, spatial extent). A resource is a downloadable or queryable thing (CSV, GeoJSON, Feature Service, PDF, API).
 
 Each source has an **archetype**, which describes how it is listed:
 
@@ -96,9 +96,9 @@ Everything lives in one DuckDB file, published as GitHub release assets (`pnpm d
 | `findings` | Narrative discoveries, append-only, one quotable fact each. | `pnpm note` |
 | `probes` | Raw evidence: every request, status, timing, block signature, parsed result. | probe, autoprofile |
 
-`pnpm digest` collects aggregates, observations, open items and findings into one markdown input for the landscape report.
+`pnpm digest` collects aggregates, observations, open items and findings into one markdown input for the landscape report. `pnpm charts` draws the report's SVG charts from the same queries.
 
-`datasets` and `resources` hold harvested catalog records (`pnpm harvest` writes `data/harvest/<source>/` shards with raw records; `pnpm harvest:load` loads them). A source that republishes another portal sets `recipe.mirrors`; its copies get `duplicate_of` and are excluded from readiness views. If the DB outgrows a single release asset, harvest data moves to per-source Parquet files next to it.
+`datasets` and `resources` hold harvested catalog records (`pnpm harvest` writes `data/harvest/<source>/` shards with raw records; `pnpm harvest:load` loads them). A source that republishes another portal sets `recipe.mirrors`; its copies get `duplicate_of` and are excluded from readiness views. Each record gets a `record_kind` (data, document, app, image, inventory); readiness shares are computed over data records only. If the DB outgrows a single release asset, harvest data moves to per-source Parquet files next to it.
 
 ### Source status
 
@@ -123,7 +123,7 @@ Everything lives in one DuckDB file, published as GitHub release assets (`pnpm d
 2. **Probe** (`pnpm probe`): reachability, TLS, bot-block signatures (with a pause-and-retry for WAF challenges and a browser-UA comparison), robots.txt AI-agent rules, then a platform fingerprint via API calls: CKAN, ArcGIS Hub (with DCAT feed fallback), Socrata, Opendatasoft, Dataverse, GeoNetwork, ArcGIS Server, DCAT `data.json`. `API_HOME` maps known front-end hosts to their API host. Writes `sources`, `org_sources`, `observations`, `open_items`, `probes`.
 3. **Auto-profile** (`pnpm autoprofile`): for `needs_profiling` sources, reads the landing page and follows up to 4 same-host data pages. It fingerprints up to 4 linked hosts that look like portals, counts data, geo and document file links, tests API-looking links for JSON, and checks for script-heavy pages. Then it routes each source as below.
 4. **Review**: `needs_review` items by a Claude session, `needs_human` items by a maintainer. `pnpm profile-source` records the result as a curated source.
-5. **Harvest** (next): each source's connector writes `datasets` and `resources`, incrementally by modified date where the API supports it.
+5. **Harvest** (CKAN and Hub done): each source's connector writes `datasets` and `resources`, incrementally by modified date where the API supports it.
 6. **Classify resources**: normalize formats, assign a tier, check link health.
 7. **Index**: full-text search over datasets; embeddings later.
 8. **Enrich** (later): sample tabular resources for schema and row counts; extract text and tables from documents.

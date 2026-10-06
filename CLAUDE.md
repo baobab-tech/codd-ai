@@ -40,7 +40,7 @@ Then:
 `NEXT.md` has the full state, the ordered next steps, decisions and gotchas. In short:
 
 - Done: directory sync, probe, auto-profile with review routing, review tooling; CKAN harvest (101,484 unique records) and ArcGIS Hub harvest (25,341 unique items) into `datasets` / `resources`, with readiness views and licence / record-kind classification.
-- Next: refresh the landscape report; write the `needs_human` brief with links; harvest the remaining platforms (validate each lister on a few sources first); theme normalization. Serve (MCP) comes after.
+- Next: go through the open `needs_human` items with the maintainer; harvest the remaining platforms (validate each lister on a few sources first); theme normalization. Serve (MCP) comes after.
 - Deduplication: a source that republishes another portal sets `sources.recipe.mirrors`; ArcGIS items shown on several Hub sites are deduped by item id. Both set `datasets.duplicate_of`, and the views skip duplicates.
 - Keep `NEXT.md` current: update it at the end of every session with what changed and what is next.
 
@@ -82,9 +82,11 @@ pnpm reserves some script names (`import`, `profile`, ...). Check with `pnpm <na
 | Kind | Who | Examples |
 |---|---|---|
 | `needs_review` | A Claude session can verify and close it: check the API, write the `recipe`, set `status='harvestable'` with `pnpm profile-source`, then `pnpm items resolve <id> "..."`. If it is still unclear after checking, re-open it as `needs_human` with the question. | JSON API found, file listing to confirm, JS app to inspect with the browser, org to find inside a shared portal |
-| `needs_human` | A person. **Claude must not resolve these.** Present them to the user as questions, with the evidence, and record the answer (`pnpm items resolve`, plus `pnpm note --topic decisions`). | Document libraries (ingest, look elsewhere, or skip?), pages with no data found, which ArcGIS Server folders are open data, unreachable sites |
+| `needs_human` | A person (any maintainer). **Claude must not resolve these.** Check each item first (links, file counts, licence), then ask in the session, a few at a time, with the evidence and a recommendation. Record each answer straight away (`pnpm items resolve`, plus `pnpm note --topic decisions`). No brief files: they go stale. | Document libraries (ingest, look elsewhere, or skip?), pages with no data found, which ArcGIS Server folders are open data, unreachable sites |
 | `decision` | A person: a project-level policy question. | Whether robots.txt applies to public APIs |
 | `blocker`, `dead_link`, `data_error`, `platform_mismatch` | Probe-generated facts. A session may fix them (overrides, profiling) and resolve them. | |
+
+When a source is checked and found not relevant, keep it: `pnpm profile-source ... --archetype not_data --status not_data --notes "Checked <date>: why"` and close its item with `wontfix`. Never delete it, so later sessions see it was checked.
 
 Rule of thumb: anything that is not clearly a data catalog, an API or a list of data files goes to a person. That includes documents, an ambiguous scope (which folders or org filter), and anything with licensing or "should this be public" implications.
 
@@ -100,10 +102,10 @@ Rule of thumb: anything that is not clearly a data catalog, an API or a list of 
 
 The published report is `reports/LANDSCAPE.md`, linked from the top of the README. To refresh it:
 
-1. Run `pnpm digest --out reports/digest-$(date +%F).md`. Keep older digests; they are the dated evidence.
+1. Run `pnpm digest --out reports/digest-$(date +%F).md` and `pnpm charts`. Keep older digests; they are the dated evidence. The charts in `reports/charts/` are overwritten with current numbers.
 2. Rewrite `reports/LANDSCAPE.md` from the new digest: update the "As of" date and point its digest links at the new file. Keep the structure: summary, platforms, who is ready, access patterns, barriers, robots.txt, directory data quality, recommendations, open questions, method.
 3. Use only numbers that appear in the digest. Findings carry the numbers from the day they were written; prefer the digest's aggregates when they differ.
-4. Update the "Landscape report" table and the `identified_sources` badge in `README.md` to match.
+4. Update the "Landscape report" table and the `identified_sources` badge in `README.md` to match. When adding a chart, add it to `src/cli/charts.ts` (same queries as the digest) and follow the `dataviz` skill.
 
 Follow the writing style in the user's global CLAUDE.md.
 
@@ -126,6 +128,7 @@ Follow the writing style in the user's global CLAUDE.md.
 | `pnpm items [kind]` / `pnpm items resolve <id> "why"` | Work queue |
 | `pnpm profile-source <org> --id --archetype --base-url [--recipe --scope --parent --replaces ...]` | Record a profiled source (curated; the probe won't overwrite it), close its profiling items, supersede an earlier source |
 | `pnpm digest` | Report input digest |
+| `pnpm charts` | Report charts (SVG) → `reports/charts/` |
 | `pnpm harvest [--platform ckan] [--only ...]` / `pnpm harvest:load` | Fetch catalogs into `data/harvest/` shards (raw + mapped); load into `datasets` / `resources` |
 | `pnpm sql "..."` | Ad-hoc SQL |
 | `pnpm db:pull` / `db:publish` | Fetch / publish the DB |
@@ -133,4 +136,4 @@ Follow the writing style in the user's global CLAUDE.md.
 
 ## Etiquette when probing
 
-Requests to a host go one at a time, 500 ms apart, with a `codd-ai` user agent. A browser user agent is used only to test whether a block depends on the user agent, and the result is recorded. Ask the maintainer before any new bulk crawl.
+Requests to a host go one at a time, 500 ms apart, with a `codd-ai` user agent. robots.txt governs crawling pages; documented public APIs and OAI-PMH endpoints are used anyway (decision 2026-10-06). Honour `Crawl-delay`. A browser user agent is used only to test whether a block depends on the user agent, and the result is recorded. Ask the maintainer before any new bulk crawl.

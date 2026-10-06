@@ -42,9 +42,9 @@ table(await q(`select platform, count(*)::int as orgs, round(100.0 * count(*) / 
 
 h("Org readiness (best source status per org)");
 table(await q(`with best as (
-    select o.id, max(case when s.status in ('identified','harvestable','harvested') then 3 when s.status in ('proposed','needs_human') then 2 when s.id is not null then 1 else 0 end) as r
+    select o.id, max(case when s.status in ('identified','harvestable','harvested') then 3 when s.status in ('proposed','needs_human') then 2 when s.status = 'not_data' then 1 when s.id is not null then 1 else 0 end) as r
     from orgs o left join org_sources os on os.org_id = o.id left join sources s on s.id = os.source_id group by 1)
-  select case r when 3 then 'source identified (API or confirmed recipe)' when 2 then 'in review queue' when 1 then 'other' else 'no source (dead link or no URL)' end as readiness,
+  select case r when 3 then 'source identified (API or confirmed recipe)' when 2 then 'blocked or in review' when 1 then 'checked: not a data source' else 'no source (dead link or no URL)' end as readiness,
     count(*)::int as orgs, round(100.0 * count(*) / sum(count(*)) over (), 1) as pct
   from best group by r order by r desc`));
 

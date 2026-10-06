@@ -16,7 +16,7 @@ A registry, connectors and an MCP server so AI agents can find and query the ope
 [![Status](https://img.shields.io/badge/status-early-orange)](NEXT.md)
 
 [![Portals](https://img.shields.io/badge/portals-253-D80621)](https://directory.opendatasociety.ca/directory)
-[![With a catalog API](https://img.shields.io/badge/identified_sources-226%2F253-2C6E91)](docs/PLAN.md)
+[![With a catalog API](https://img.shields.io/badge/identified_sources-238%2F253-2C6E91)](docs/PLAN.md)
 [![Database](https://img.shields.io/badge/database-db--latest-6E7F45)](https://github.com/baobab-tech/codd-ai/releases/tag/db-latest)
 [![Made in Canada](https://img.shields.io/badge/made_in-Canada_%F0%9F%8D%81-D80621)](https://opendatasociety.ca)
 
@@ -39,20 +39,22 @@ The directory lists 253 Canadian organizations that publish open data, which tog
 | | |
 |---|---|
 | Organizations | 253 |
-| Readable by an agent today | 226 (89%) |
-| Unique catalog records harvested (CKAN, ArcGIS Hub) | 126,825, of which 63,124 are data |
-| Data records machine-readable / live-queryable | 76.2% / 31.7% |
-| Data records with an open licence | 87.2% (CKAN 94.9%, Hub 53.5%) |
-| Most common platform | ArcGIS Hub, 138 orgs |
+| Readable by an agent today | 238 (94%) |
+| Unique catalog records harvested (CKAN, ArcGIS Hub) | 126,921, of which 63,211 are data |
+| Data records machine-readable / live-queryable | 76.2% / 31.8% |
+| Data records with an open licence | 87.2% (CKAN 94.9%, Hub 53.8%) |
+| Most common platform | ArcGIS Hub, 140 orgs |
 | Dead links | 11 |
+
+<p align="center"><img src="reports/charts/data-readiness.svg" alt="AI readiness of data records: CKAN vs ArcGIS Hub" width="100%"></p>
 
 ## How it works
 
-<p align="center"><img src="assets/pipeline.svg" alt="Pipeline: directory → orgs (pnpm sync) → sources (pnpm probe) → auto-profile (applied, needs review, needs human) → curated sources → datasets (next) → MCP server (planned). org_overrides holds corrections; observations, open_items, findings and probes feed the landscape analysis." width="100%"></p>
+<p align="center"><img src="assets/pipeline.svg" alt="Pipeline: directory → orgs (pnpm sync) → sources (pnpm probe) → auto-profile (applied, needs review, needs human) → curated sources → datasets (pnpm harvest; CKAN and ArcGIS Hub done) → MCP server (planned). org_overrides holds corrections; observations, open_items, findings and probes feed the landscape analysis." width="100%"></p>
 
 The project has three parts:
 
-1. **Registry** (discovery and conversion): pull the directory, probe every portal, identify its catalog API, profile the rest, and harvest dataset records. In progress.
+1. **Registry** (discovery and conversion): pull the directory, probe every portal, identify its catalog API, profile the rest, and harvest dataset records. CKAN and ArcGIS Hub are harvested; the other platforms are next.
 2. **Serve**: connectors and an MCP server that let agents search the registry and query the data. Planned.
 3. **Steward**: a maintenance agent that keeps the registry current. It catches new datasets and dead URLs, parses unstructured sources, and works the review queue. Planned.
 
@@ -68,13 +70,14 @@ Requires Node 22+, pnpm, and the GitHub CLI (`gh`).
 pnpm install
 pnpm db:pull                 # download the latest published database
 pnpm digest                  # landscape numbers
+pnpm charts                  # landscape charts (SVG) in reports/charts/
 ```
 
 All commands are listed in [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md#commands).
 
 ## Status
 
-Early. Directory sync, probing, auto-profiling and the CKAN and ArcGIS Hub harvests work: 226 of 253 orgs have an identified source, 15 wait on a decision or fix, and 12 have a dead link or no URL. Harvesting the other platforms and the MCP server are next. [NEXT.md](NEXT.md) is the working log and has the current to-do list.
+Early. Directory sync, probing, auto-profiling and the CKAN and ArcGIS Hub harvests work: 238 of 253 orgs have an identified source, 2 are blocked, 1 is not a data source, and 12 have a dead link or no URL. Harvesting the other platforms and the MCP server are next. [NEXT.md](NEXT.md) is the working log and has the current to-do list.
 
 ## Reuse
 

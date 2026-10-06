@@ -39,7 +39,7 @@ await all(conn, `update datasets set licence_class = case
     when l similar to '.*(not open|closed|other-closed|all rights reserved|restricted|access only|king.?s printer|queen.?s printer|crown copyright|^copyright|copyright [0-9]).*' then 'restricted'
     when l similar to '.*(licen[cs]e not specified|not specified|not applicable).*' then 'none'
     when coalesce(is_open, false)
-      or l similar to '.*(open[ -]?(government|data|gov\\.?)[ -]?licen|open licen|openmb|licence du gouvernement ouvert|licence ouverte|cc[ -]?by|cc[ -]?0|creative commons attribution|public domain|pddl|odc-?by|odbl|open database licen|royalty-free, perpetual).*' then 'open'
+      or l similar to '.*(open[ -]?(government|data|gov\\.?)[ -]?licen|open data catalogue licen|open licen|openmb|licence du gouvernement ouvert|licence ouverte|cc[ -]?by|cc[ -]?0|creative commons attribution|public domain|pddl|odc-?by|odbl|open database licen|royalty-free, perpetual).*' then 'open'
     when trim(l) in ('', 'none', 'license not specified', 'notspecified', 'not specified', 'other') then 'none'
     else 'unclear' end
   from (select id as did, lower(coalesce(licence, '') || ' ' || coalesce(licence_url, '')) as l from datasets) x

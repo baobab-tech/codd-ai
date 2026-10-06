@@ -82,12 +82,15 @@ function parseRobots(txt: string) {
     if (key === "allow" && v) cur.allow.push(v);
   }
   const groupFor = (agent: string) => groups.find((g) => g.agents.some((a) => a.toLowerCase() === agent.toLowerCase()));
-  const blocksAll = (g?: (typeof groups)[number]) => !!g && g.disallow.includes("/") && !g.allow.includes("/");
+  // "Disallow: /" with Allow lines is an allowlist (only the listed paths may be crawled), not a blanket block.
+  const blocksAll = (g?: (typeof groups)[number]) => !!g && g.disallow.includes("/") && g.allow.length === 0;
+  const allowlist = (g?: (typeof groups)[number]) => !!g && g.disallow.includes("/") && g.allow.length > 0 && !g.allow.includes("/");
   const star = groupFor("*");
   const named = AI_AGENTS.filter((a) => groupFor(a));
   return {
     present: true,
     star_disallow_all: blocksAll(star),
+    star_allowlist: allowlist(star),
     star_disallows_api: !!star?.disallow.some((d) => /^\/(api|data\/api)/.test(d)),
     ai_agents_named: named,
     ai_agents_blocked: named.filter((a) => blocksAll(groupFor(a))),
@@ -159,6 +162,13 @@ export async function tryHub(origin: string): Promise<Detected | null> {
   const j = json(r);
   logProbe("arcgis_hub", r, j ? { count: j.numberMatched } : null);
   if (j && typeof j.numberMatched === "number") return { platform: "arcgis_hub", base_url: origin, count: j.numberMatched, evidence: r.url };
+  // Some Hub sites answer 404 on the dataset collection but serve collections/all (gisdata.nanaimo.ca).
+  if (r.status === 404) {
+    const a = await get(`${origin}/api/search/v1/collections/all/items?limit=1`);
+    const aj = json(a);
+    logProbe("arcgis_hub_all", a, aj ? { count: aj.numberMatched } : null);
+    if (aj && typeof aj.numberMatched === "number") return { platform: "arcgis_hub", base_url: origin, count: aj.numberMatched, version: "dataset collection 404; all items", evidence: a.url };
+  }
   // Some Hub sites have a broken search API ("Site catalog is not configured correctly") but a working DCAT feed.
   if (r.status === 400 && /Site catalog/.test(r.body)) {
     const f = await get(`${origin}/api/feed/dcat-us/1.1.json`, { accept: "application/json", timeoutMs: 60_000 });
