@@ -14,6 +14,12 @@ It's one package for now, but keep the boundaries in `docs/PLAN.md` ("Three part
 - Serve never writes registry tables;
 - keep catalog listing (Part 1) and query-time access (Part 2) in separate modules.
 
+## Design stance
+
+The project is in early design. Tables, columns, record kinds, views and observation keys can change when the data shows they are wrong: fix the model rather than work around it, and document the change in `docs/PLAN.md` or `docs/AI-READINESS.md`.
+
+Keep it simple and scalable. Prefer a rule in an existing classify step or view over a new table or pipeline stage. When a structural change is not obvious, ask the maintainer first, with a short explanation, the evidence and a recommendation.
+
 ## Start of session
 
 ```bash
@@ -50,7 +56,7 @@ Tables, by purpose (schema in `src/db.ts`):
 - `observations`: structured facts refreshed by the probe and auto-profile (access, robots, landing, api, autoprofile).
 - `open_items`: the work queue. Close items with `status='resolved'` or `'wontfix'` and a `resolution`.
 - `findings`: narrative discoveries for the landscape report. Append-only.
-- `datasets` / `resources`: harvested catalog records (Part 1). `record_kind` (data, document or app), `licence_class`, `best_tier`, `duplicate_of`, `extras`. Raw platform records sit in local shards `data/harvest/<source>/raw.jsonl.gz` (not published).
+- `datasets` / `resources`: harvested catalog records (Part 1). `record_kind` (data, document, app, image or inventory), `licence_class`, `best_tier`, `duplicate_of`, `extras`. Raw platform records sit in local shards `data/harvest/<source>/raw.jsonl.gz` (not published).
 
 ## Record what you learn
 

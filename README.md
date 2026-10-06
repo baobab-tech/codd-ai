@@ -16,7 +16,7 @@ A registry, connectors and an MCP server so AI agents can find and query the ope
 [![Status](https://img.shields.io/badge/status-early-orange)](NEXT.md)
 
 [![Portals](https://img.shields.io/badge/portals-253-D80621)](https://directory.opendatasociety.ca/directory)
-[![With a catalog API](https://img.shields.io/badge/identified_sources-210%2F253-2C6E91)](docs/PLAN.md)
+[![With a catalog API](https://img.shields.io/badge/identified_sources-226%2F253-2C6E91)](docs/PLAN.md)
 [![Database](https://img.shields.io/badge/database-db--latest-6E7F45)](https://github.com/baobab-tech/codd-ai/releases/tag/db-latest)
 [![Made in Canada](https://img.shields.io/badge/made_in-Canada_%F0%9F%8D%81-D80621)](https://opendatasociety.ca)
 
@@ -39,10 +39,12 @@ The directory lists 253 Canadian organizations that publish open data, which tog
 | | |
 |---|---|
 | Organizations | 253 |
-| Readable by an agent today | 210 (83%) |
-| Records behind live catalog APIs | 203,028 (directory reports 104,617) |
-| Most common platform | ArcGIS Hub, 136 orgs |
-| Dead links | 12 |
+| Readable by an agent today | 226 (89%) |
+| Unique catalog records harvested (CKAN, ArcGIS Hub) | 126,825, of which 63,124 are data |
+| Data records machine-readable / live-queryable | 76.2% / 31.7% |
+| Data records with an open licence | 87.2% (CKAN 94.9%, Hub 53.5%) |
+| Most common platform | ArcGIS Hub, 138 orgs |
+| Dead links | 11 |
 
 ## How it works
 
@@ -72,7 +74,7 @@ All commands are listed in [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md#commands)
 
 ## Status
 
-Early. Directory sync, probing and auto-profiling work: 210 of 253 orgs have an identified source, 30 are in the review queue, and 13 have a dead link or no URL. Connectors, harvesting and the MCP server are next. [NEXT.md](NEXT.md) is the working log and has the current to-do list.
+Early. Directory sync, probing, auto-profiling and the CKAN and ArcGIS Hub harvests work: 226 of 253 orgs have an identified source, 15 wait on a decision or fix, and 12 have a dead link or no URL. Harvesting the other platforms and the MCP server are next. [NEXT.md](NEXT.md) is the working log and has the current to-do list.
 
 ## Reuse
 

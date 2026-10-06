@@ -44,8 +44,12 @@ await all(conn, `update datasets set licence_class = case
     else 'unclear' end
   from (select id as did, lower(coalesce(licence, '') || ' ' || coalesce(licence_url, '')) as l from datasets) x
   where datasets.id = x.did`);
+// inventory: a catalogue entry for data the publisher has not released (data.ontario.ca lists its data inventory,
+// marked under_review or restricted, with no resources).
 await all(conn, `update datasets set record_kind = case
-    when lower(coalesce(type, '')) in ('info', 'publication', 'publications', 'documentation', 'pdf', 'document link', 'microsoft word', 'microsoft powerpoint') then 'document'
+    when access_level in ('under_review', 'restricted') and coalesce(resource_count, 0) = 0 then 'inventory'
+    when type = 'Image' then 'image'  -- one Hub image item, mostly orthophoto tiles (Langley, Grande Prairie); Image Services stay data
+    when lower(coalesce(type, '')) in ('info', 'information', 'access-requests', 'pia-summaries', 'publication', 'publications', 'documentation', 'pdf', 'document link', 'microsoft word', 'microsoft powerpoint') then 'document'
     when type in ('Web Map', 'Web Experience', 'Dashboard', 'Hub Page', 'Hub Site Application', 'Site Application', 'Web Mapping Application', 'StoryMap', 'Story Map', 'Application', 'Form', 'Insights Page', 'Web Scene', 'Mobile Application', 'Notebook', 'project', 'campaign', 'platform', 'instrument_details', 'deployment_details') then 'app'
     else 'data' end`);
 

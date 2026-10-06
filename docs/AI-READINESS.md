@@ -36,7 +36,7 @@ Computed per dataset in view `v_dataset_readiness` (1 = yes), from columns the h
 | Update cadence | declared frequency | `frequency` |
 | Access level | open, restricted, under review (where declared) | `access_level` |
 
-`record_kind` separates **data** from **documents** (CKAN `info`/publications, Hub PDFs and document links) and **apps** (Hub web maps, dashboards, pages). Compare readiness on data records; report documents and apps as their own share of each catalogue.
+`record_kind` separates **data** from **documents** (CKAN `info`/publications, Yukon information, access-request and PIA summaries, Hub PDFs and document links), **apps** (Hub web maps, dashboards, pages), **images** (single Hub image items, mostly orthophoto tiles: Langley and Grande Prairie publish one item per tile) and **inventory** (entries for data not yet released, such as data.ontario.ca records marked under review or restricted with no resources). Compare readiness on data records; report the other kinds as their own share of each catalogue.
 
 Duplicates are excluded from every view: CKAN mirrors (`sources.recipe.mirrors`) and ArcGIS items shown on several Hub sites (item ids are global; the copy on the site of the item's owner is kept). `publisher` / `publisher_title` is the organization that owns each record, which on shared portals and Hub sites is often not the site's own org.
 

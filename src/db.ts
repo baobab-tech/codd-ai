@@ -153,7 +153,7 @@ alter table datasets add column if not exists access_level varchar;
 alter table datasets add column if not exists duplicate_of varchar;
 alter table datasets add column if not exists extras json;
 alter table datasets add column if not exists licence_class varchar;  -- open | non_commercial | no_derivatives | restricted | unclear | none (classify step in harvest:load)
-alter table datasets add column if not exists record_kind varchar;    -- data | document | app (classify step in harvest:load)           -- platform-specific signals (ArcGIS: orgId, owner, numViews, scoreCompleteness)  -- set when the source mirrors another portal (sources.recipe.mirrors) and the record exists there -- open / restricted / under review, where declared
+alter table datasets add column if not exists record_kind varchar;    -- data | document | app | image | inventory (classify step in harvest:load)           -- platform-specific signals (ArcGIS: orgId, owner, numViews, scoreCompleteness)  -- set when the source mirrors another portal (sources.recipe.mirrors) and the record exists there -- open / restricted / under review, where declared
 
 -- Downloadable or queryable things inside a dataset.
 create table if not exists resources (
@@ -205,11 +205,18 @@ create or replace view v_source_readiness as
 select s.id, s.platform, s.archetype, s.status,
   (s.archetype in ('platform_api', 'known_api', 'esri_rest') and s.status in ('identified', 'harvestable', 'harvested'))::int as catalog_api,
   s.dataset_count, s.harvested_count,
-  avg(r.machine_readable) as share_machine_readable,
-  avg(r.live_query) as share_live_query,
-  avg(r.open_licence) as share_open_licence,
-  avg(r.described) as share_described,
-  avg(r.fresh) as share_fresh
+  -- unique records by kind; the shares below are over data records only, so documents and apps don't dilute them
+  count(r.id) as unique_records,
+  count(r.id) filter (where r.record_kind = 'data') as data_records,
+  count(r.id) filter (where r.record_kind = 'document') as document_records,
+  count(r.id) filter (where r.record_kind = 'app') as app_records,
+  count(r.id) filter (where r.record_kind = 'image') as image_records,
+  count(r.id) filter (where r.record_kind = 'inventory') as inventory_records,
+  avg(r.machine_readable) filter (where r.record_kind = 'data') as share_machine_readable,
+  avg(r.live_query) filter (where r.record_kind = 'data') as share_live_query,
+  avg(r.open_licence) filter (where r.record_kind = 'data') as share_open_licence,
+  avg(r.described) filter (where r.record_kind = 'data') as share_described,
+  avg(r.fresh) filter (where r.record_kind = 'data') as share_fresh
 from sources s left join v_dataset_readiness r on r.source_id = s.id
 where s.parent_id is null
 group by all;

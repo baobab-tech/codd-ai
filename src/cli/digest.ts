@@ -70,11 +70,14 @@ table(await q(`select s.platform, count(*)::int as sources_harvested, sum(s.harv
   (select count(*)::int from datasets d join sources x on x.id = d.source_id where x.platform = s.platform and d.duplicate_of is null) as unique_records
   from sources s where s.harvested_at is not null group by 1 order by records desc`));
 
-h("Dataset readiness (unique harvested records, % of datasets)");
-table(await q(`select count(*)::int as datasets, round(avg(machine_readable)*100,1) as machine_readable, round(avg(live_query)*100,1) as live_query,
+h("Unique harvested records by kind");
+table(await q(`select record_kind, count(*)::int as records, round(count(*) * 100.0 / sum(count(*)) over (), 1) as pct from v_dataset_readiness group by 1 order by 2 desc`));
+
+h("Dataset readiness (unique data records, %)");
+table(await q(`select count(*)::int as data_records, round(avg(machine_readable)*100,1) as machine_readable, round(avg(live_query)*100,1) as live_query,
   round(avg(open_licence)*100,1) as open_licence, round(avg(described)*100,1) as described, round(avg(discoverable)*100,1) as discoverable,
   round(avg(fresh)*100,1) as metadata_fresh_12mo, round(avg(themed)*100,1) as themed, round(avg(spatial)*100,1) as spatial,
-  round(avg(contact)*100,1) as contact, round(avg(bilingual)*100,1) as bilingual from v_dataset_readiness`));
+  round(avg(contact)*100,1) as contact, round(avg(bilingual)*100,1) as bilingual from v_dataset_readiness where record_kind = 'data'`));
 
 h("Readiness by platform and record kind (unique records, %)");
 table(await q(`select s.platform, r.record_kind, count(*)::int as records, round(avg(r.machine_readable)*100,1) as machine_readable,
@@ -99,18 +102,19 @@ h("Most common unclassified or missing licence labels (data records)");
 table(await q(`select left(coalesce(licence, '(empty)'), 70) as licence, licence_class, count(*)::int as records from datasets
   where duplicate_of is null and record_kind = 'data' and licence_class in ('unclear', 'none') group by all order by records desc limit 10`));
 
-h("Best resource tier per dataset");
-table(await q(`select coalesce(best_tier, '(no resources)') as best_tier, count(*)::int as datasets, round(100.0 * count(*) / sum(count(*)) over (), 1) as pct
-  from datasets where duplicate_of is null group by 1 order by 2 desc`));
+h("Best resource tier per data record");
+table(await q(`select coalesce(best_tier, '(no resources)') as best_tier, count(*)::int as data_records, round(100.0 * count(*) / sum(count(*)) over (), 1) as pct
+  from datasets where duplicate_of is null and record_kind = 'data' group by 1 order by 2 desc`));
 
 h("Top resource formats");
 table(await q(`select r.format, r.tier, count(*)::int as resources from resources r join datasets d on d.id = r.dataset_id
   where d.duplicate_of is null group by all order by resources desc limit 15`));
 
-h("Readiness by harvested source (% of its unique datasets)");
-table(await q(`select id as source, harvested_count as records, round(share_machine_readable*100) as machine_readable, round(share_live_query*100) as live_query,
+h("Readiness by harvested source (unique records by kind; % of its data records)");
+table(await q(`select id as source, unique_records, data_records, document_records as documents, app_records as apps, image_records as images, inventory_records as inventory,
+  round(share_machine_readable*100) as machine_readable, round(share_live_query*100) as live_query,
   round(share_open_licence*100) as open_licence, round(share_described*100) as described, round(share_fresh*100) as metadata_fresh
-  from v_source_readiness where harvested_count is not null order by harvested_count desc`));
+  from v_source_readiness where harvested_count is not null order by data_records desc, unique_records desc`));
 
 h("Record types by source (platform's own type field)");
 table(await q(`select source_id, type, count(*)::int as records from datasets where duplicate_of is null group by all having count(*) >= 50 order by source_id, records desc`));
