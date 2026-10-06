@@ -50,7 +50,9 @@ await all(conn, `update datasets set record_kind = case
     when access_level in ('under_review', 'restricted') and coalesce(resource_count, 0) = 0 then 'inventory'
     when type = 'Image' then 'image'  -- one Hub image item, mostly orthophoto tiles (Langley, Grande Prairie); Image Services stay data
     when lower(coalesce(type, '')) in ('info', 'information', 'access-requests', 'pia-summaries', 'publication', 'publications', 'documentation', 'pdf', 'document link', 'microsoft word', 'microsoft powerpoint') then 'document'
-    when type in ('Web Map', 'Web Experience', 'Dashboard', 'Hub Page', 'Hub Site Application', 'Site Application', 'Web Mapping Application', 'StoryMap', 'Story Map', 'Application', 'Form', 'Insights Page', 'Web Scene', 'Mobile Application', 'Notebook', 'project', 'campaign', 'platform', 'instrument_details', 'deployment_details') then 'app'
+    when type in ('Web Map', 'Web Experience', 'Dashboard', 'Hub Page', 'Hub Site Application', 'Site Application', 'Web Mapping Application', 'StoryMap', 'Story Map', 'Application', 'Form', 'Insights Page', 'Web Scene', 'Mobile Application', 'Notebook', 'project', 'campaign', 'platform', 'instrument_details', 'deployment_details',
+      'chart', 'story', 'filter', 'calendar', 'form', 'datalens', 'visualization', 'measure') then 'app'  -- Socrata derived views and pages
+    when type = 'file' and best_tier = 'document' then 'document'  -- Socrata attached PDFs and Word files
     else 'data' end`);
 
 // ArcGIS item ids are global: the same item shown on several Hub sites is one dataset.

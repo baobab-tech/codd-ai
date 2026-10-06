@@ -56,6 +56,7 @@ Tables, by purpose (schema in `src/db.ts`):
 - `observations`: structured facts refreshed by the probe and auto-profile (access, robots, landing, api, autoprofile).
 - `open_items`: the work queue. Close items with `status='resolved'` or `'wontfix'` and a `resolution`.
 - `findings`: narrative discoveries for the landscape report. Append-only.
+- `resource_describe`: schema, row count, sample rows and query limits of live resources (`pnpm describe`).
 - `datasets` / `resources`: harvested catalog records (Part 1). `record_kind` (data, document, app, image or inventory), `licence_class`, `best_tier`, `duplicate_of`, `extras`. Raw platform records sit in local shards `data/harvest/<source>/raw.jsonl.gz` (not published).
 
 ## Record what you learn
@@ -129,6 +130,7 @@ Follow the writing style in the user's global CLAUDE.md.
 | `pnpm profile-source <org> --id --archetype --base-url [--recipe --scope --parent --replaces ...]` | Record a profiled source (curated; the probe won't overwrite it), close its profiling items, supersede an earlier source |
 | `pnpm digest` | Report input digest |
 | `pnpm charts` | Report charts (SVG) → `reports/charts/` |
+| `pnpm describe` / `--load` | Schema, row count, samples of live resources → `resource_describe` |
 | `pnpm harvest [--platform ckan] [--only ...]` / `pnpm harvest:load` | Fetch catalogs into `data/harvest/` shards (raw + mapped); load into `datasets` / `resources` |
 | `pnpm sql "..."` | Ad-hoc SQL |
 | `pnpm db:pull` / `db:publish` | Fetch / publish the DB |

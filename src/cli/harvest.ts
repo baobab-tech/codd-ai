@@ -10,8 +10,18 @@ import { join } from "node:path";
 import { createGzip } from "node:zlib";
 import pLimit from "p-limit";
 import { ROOT, all, closeDb, db } from "../db.js";
-import { listCkan } from "../connectors/list/ckan.js";
+import { listCkan, type HarvestRecord } from "../connectors/list/ckan.js";
 import { listArcgisHub } from "../connectors/list/arcgis-hub.js";
+import { listSocrata } from "../connectors/list/socrata.js";
+import { listDataverse } from "../connectors/list/dataverse.js";
+import { listOpendatasoft } from "../connectors/list/opendatasoft.js";
+import { listGeonetwork } from "../connectors/list/geonetwork.js";
+import { listArcgisServer } from "../connectors/list/arcgis-server.js";
+import { listStatcanWds } from "../connectors/list/statcan-wds.js";
+import { listWebListing } from "../connectors/list/web-listing.js";
+import { listGeocore } from "../connectors/list/geocore.js";
+import { listOaiPmh } from "../connectors/list/oai-pmh.js";
+import { listBrandon, listConp, listNatureCounts, listRedDeer, listValet } from "../connectors/list/known-apis.js";
 
 const arg = (k: string) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : undefined);
 const PLATFORM = arg("--platform") ?? "ckan";
@@ -20,15 +30,21 @@ const PARALLEL = Number(arg("--parallel") ?? 4);
 
 export const shardDir = (sourceId: string) => join(ROOT, "data/harvest", sourceId.replace(/[^a-zA-Z0-9._-]+/g, "_"));
 
-const LISTERS: Record<string, typeof listCkan> = { ckan: listCkan, arcgis_hub: listArcgisHub };
+type Lister = (id: string, base: string, opts: { gapMs?: number; recipe?: any; onPage?: (start: number, total: number) => void }) => AsyncGenerator<HarvestRecord[]>;
+const LISTERS: Record<string, Lister> = { ckan: listCkan, arcgis_hub: listArcgisHub, socrata: listSocrata, dataverse: listDataverse, opendatasoft: listOpendatasoft, geonetwork: listGeonetwork, arcgis_server: listArcgisServer,
+  statcan_wds: listStatcanWds, boc_valet: listValet, geocore: listGeocore, oai_pmh: listOaiPmh,
+  // platform 'custom': one lister per connector_id
+  web_listing: listWebListing,
+  reddeer_api: listRedDeer, brandon_api: listBrandon, naturecounts: listNatureCounts, conp: listConp,
+} as Record<string, Lister>;
 
 const conn = await db();
-let sources = await all<{ id: string; base_url: string; platform: string; dataset_count: number | null }>(conn,
-  `select id, base_url, platform, dataset_count from sources where platform = $p and parent_id is null and status in ('identified', 'harvestable', 'harvested') order by dataset_count desc nulls last`, { p: PLATFORM });
+let sources = await all<{ id: string; base_url: string; platform: string; connector_id: string | null; dataset_count: number | null; recipe: any }>(conn,
+  `select id, base_url, platform, connector_id, dataset_count, recipe from sources where (platform = $p or ($p = 'web_listing' and archetype = 'web_listing')) and parent_id is null and status in ('identified', 'harvestable', 'harvested') order by dataset_count desc nulls last`, { p: PLATFORM });
 await closeDb(conn);
 if (ONLY) sources = sources.filter((s) => ONLY.includes(s.id));
-const lister = LISTERS[PLATFORM];
-if (!lister) throw new Error(`no lister for ${PLATFORM}`);
+const listerFor = (s: { platform: string; connector_id: string | null }) => (PLATFORM === "web_listing" ? LISTERS.web_listing : LISTERS[s.platform] ?? LISTERS[s.connector_id ?? ""]);
+for (const s of sources) if (!listerFor(s)) throw new Error(`no lister for ${s.id} (${s.platform}/${s.connector_id})`);
 
 function gzWriter(path: string) {
   const gz = createGzip();
@@ -53,7 +69,8 @@ await Promise.all(
       let nd = 0, nr = 0, lastLog = 0;
       const started = new Date().toISOString();
       try {
-        for await (const page of lister(s.id, s.base_url, {
+        for await (const page of listerFor(s)(s.id, s.base_url, {
+          recipe: typeof s.recipe === "string" ? JSON.parse(s.recipe) : s.recipe,
           onPage: (start, total) => {
             if (Date.now() - lastLog > 30_000 || start === 0) {
               lastLog = Date.now();

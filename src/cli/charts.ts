@@ -137,6 +137,7 @@ const PLATFORM: Record<string, string> = {
   arcgis_hub: "ArcGIS Hub", ckan: "CKAN", socrata: "Socrata", dcat: "DCAT data.json", arcgis_server: "ArcGIS Server", dataverse: "Dataverse",
   opendatasoft: "Opendatasoft", custom: "Custom API", unknown: "No platform (web pages)", none: "No source",
 };
+const PNAME: Record<string, string> = { ...PLATFORM, statcan_wds: "StatCan WDS", boc_valet: "Bank of Canada Valet", geonetwork: "GeoNetwork", geocore: "GeoCore", oai_pmh: "OAI-PMH (FRDR)", unknown: "Web pages", custom: "Bespoke APIs" };
 const charts: Record<string, string> = {};
 const date = new Date().toISOString().slice(0, 10);
 
@@ -162,44 +163,62 @@ const date = new Date().toISOString().slice(0, 10);
 const KINDS = [{ key: "data", label: "Data" }, { key: "document", label: "Documents" }, { key: "image", label: "Images" }, { key: "app", label: "Apps" }, { key: "inventory", label: "Inventory (unreleased)" }];
 {
   const rows = await q(`select s.platform, d.record_kind, count(*)::int as n from v_dataset_readiness d join sources s on s.id = d.source_id group by all`);
-  const groups = ["ckan", "arcgis_hub"].map((p) => ({ label: PLATFORM[p], parts: Object.fromEntries(rows.filter((r) => r.platform === p).map((r) => [r.record_kind, r.n])) }));
+  const tot = new Map<string, number>();
+  for (const r of rows) tot.set(r.platform, (tot.get(r.platform) ?? 0) + r.n);
+  const top = [...tot.entries()].filter(([, n]) => n >= 500).sort((a, b) => b[1] - a[1]).map(([p]) => p);
+  const groups = top.map((p) => ({ label: PNAME[p] ?? p, parts: Object.fromEntries(rows.filter((r) => r.platform === p).map((r) => [r.record_kind, r.n])) }));
   const total = rows.reduce((a, r) => a + r.n, 0), data = rows.filter((r) => r.record_kind === "data").reduce((a, r) => a + r.n, 0);
-  charts["record-kinds"] = stacked({ title: "Catalog records by kind", subtitle: `${fmt(total)} unique CKAN and ArcGIS Hub records; ${fmt(data)} (${pct((data / total) * 100)}) are data`, keys: KINDS, groups });
+  charts["record-kinds"] = stacked({ title: "Catalog records by kind", subtitle: `${fmt(total)} unique harvested records; ${fmt(data)} (${pct((data / total) * 100)}) are data. Platforms with 500+ records.`, keys: KINDS, groups, labelW: 170 });
 }
 
-// 3. Readiness of data records, CKAN vs Hub.
+// 3. Readiness of data records, the four platforms with the most data records.
 {
   const rows = await q(`select s.platform, count(*)::int as n, avg(machine_readable)*100 as mr, avg(live_query)*100 as lq, avg(open_licence)*100 as ol, avg(described)*100 as de, avg(discoverable)*100 as di
-    from v_dataset_readiness d join sources s on s.id = d.source_id where d.record_kind = 'data' and s.platform in ('ckan', 'arcgis_hub') group by 1`);
-  const by = Object.fromEntries(rows.map((r) => [r.platform, r]));
-  const c = by.ckan, a = by.arcgis_hub;
+    from v_dataset_readiness d join sources s on s.id = d.source_id where d.record_kind = 'data' group by 1 order by n desc limit 4`);
   charts["data-readiness"] = grouped({
     title: "AI readiness of data records",
-    subtitle: `Share of unique data records: CKAN ${fmt(c.n)}, ArcGIS Hub ${fmt(a.n)}`,
-    series: [`CKAN`, `ArcGIS Hub`],
+    subtitle: `Share of unique data records, four largest platforms: ${rows.map((r) => `${PNAME[r.platform] ?? r.platform} ${fmt(r.n)}`).join(", ")}`,
+    series: rows.map((r) => PNAME[r.platform] ?? r.platform),
     measures: [
-      { label: "Machine-readable", values: [c.mr, a.mr] },
-      { label: "Live-queryable", values: [c.lq, a.lq] },
-      { label: "Open licence", values: [c.ol, a.ol] },
-      { label: "Described (100+ characters)", values: [c.de, a.de] },
-      { label: "3+ tags or keywords", values: [c.di, a.di] },
+      { label: "Machine-readable", values: rows.map((r) => r.mr) },
+      { label: "Live-queryable", values: rows.map((r) => r.lq) },
+      { label: "Open licence", values: rows.map((r) => r.ol) },
+      { label: "Described (100+ characters)", values: rows.map((r) => r.de) },
+      { label: "3+ tags or keywords", values: rows.map((r) => r.di) },
     ],
+  });
+}
+
+// 3b. How each platform's data records can be reached (best resource tier).
+{
+  const rows = await q(`select s.platform, case when best_tier in ('link_only') or best_tier is null then 'other' else best_tier end as tier, count(*)::int as n
+    from datasets d join sources s on s.id = d.source_id where d.duplicate_of is null and d.record_kind = 'data' group by all`);
+  const totals = new Map<string, number>();
+  for (const r of rows) totals.set(r.platform, (totals.get(r.platform) ?? 0) + r.n);
+  const groups = [...totals.entries()].sort((a, b) => b[1] - a[1]).map(([p]) => ({ label: PNAME[p] ?? p, parts: Object.fromEntries(rows.filter((r) => r.platform === p).map((r) => [r.tier, r.n])) }));
+  charts["tiers-by-platform"] = stacked({
+    title: "How data records can be reached, by platform",
+    subtitle: "Best resource per unique data record",
+    keys: [{ key: "live_query", label: "Live query API" }, { key: "tabular_file", label: "Tabular file" }, { key: "geo_file", label: "GIS file" }, { key: "document", label: "Document only" }, { key: "other", label: "Link or nothing" }],
+    groups, labelW: 170,
   });
 }
 
 // 4. Licence classes of data records.
 {
   const rows = await q(`select s.platform, d.licence_class, count(*)::int as n from v_dataset_readiness d join sources s on s.id = d.source_id
-    where d.record_kind = 'data' and s.platform in ('ckan', 'arcgis_hub') group by all`);
+    where d.record_kind = 'data' group by all`);
   const fold = (lc: string) => (lc === "no_derivatives" ? "restricted" : lc);
-  const groups = ["ckan", "arcgis_hub"].map((p) => {
+  const tot = new Map<string, number>();
+  for (const r of rows) tot.set(r.platform, (tot.get(r.platform) ?? 0) + r.n);
+  const groups = [...tot.entries()].filter(([, n]) => n >= 500).sort((a, b) => b[1] - a[1]).map(([p]) => {
     const parts: Record<string, number> = {};
     for (const r of rows.filter((r) => r.platform === p)) parts[fold(r.licence_class)] = (parts[fold(r.licence_class)] ?? 0) + r.n;
-    return { label: PLATFORM[p], parts };
+    return { label: PNAME[p] ?? p, parts };
   });
   charts["licence-classes"] = stacked({
     title: "Licence classes of data records",
-    subtitle: "Classified from each record's licence field, as an agent reading the API sees it",
+    subtitle: "Classified from each record's licence field, as an agent reading the API sees it. Platforms with 500+ data records.", labelW: 170,
     keys: [{ key: "open", label: "Open" }, { key: "unclear", label: "Terms page or unclear" }, { key: "none", label: "None" }, { key: "non_commercial", label: "Non-commercial" }, { key: "restricted", label: "Restricted" }],
     groups,
   });

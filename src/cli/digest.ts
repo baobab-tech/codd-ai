@@ -116,6 +116,17 @@ table(await q(`select id as source, unique_records, data_records, document_recor
   round(share_open_licence*100) as open_licence, round(share_described*100) as described, round(share_fresh*100) as metadata_fresh
   from v_source_readiness where harvested_count is not null order by data_records desc, unique_records desc`));
 
+h("Describe pass (live-queryable resources: schema, row count, sample, edit date)");
+table(await q(`select kind, count(*)::int as described, count(*) filter (where error is null)::int as ok,
+    round(100.0 * count(*) filter (where error is null) / count(*), 1) as pct_ok,
+    round(median(json_array_length(schema)) filter (where error is null), 0) as median_columns,
+    sum(row_count) filter (where error is null)::bigint as total_rows,
+    count(data_modified)::int as with_edit_date,
+    count(*) filter (where data_modified >= now() - interval 1 year)::int as edited_last_12mo
+  from resource_describe group by 1 order by 2 desc`));
+table(await q(`select kind, regexp_replace(left(error, 40), '[0-9a-f-]{20,}', '…') as error, count(*)::int as n from resource_describe where error is not null group by all order by n desc limit 8`));
+table(await q(`select coalesce(query_caps->>'max_record_count', '?') as max_record_count, count(*)::int as layers from resource_describe where kind = 'esri' and error is null group by 1 order by 2 desc limit 6`));
+
 h("Record types by source (platform's own type field)");
 table(await q(`select source_id, type, count(*)::int as records from datasets where duplicate_of is null group by all having count(*) >= 50 order by source_id, records desc`));
 

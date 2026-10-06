@@ -144,7 +144,9 @@ Everything lives in one DuckDB file, published as GitHub release assets (`pnpm d
 
 Not yet checked by the auto-profile: `sitemap.xml`, CSW `GetCapabilities` on arbitrary hosts, OGC API `/collections`, GTFS feeds.
 
-## Connectors (planned)
+## Connectors
+
+Listers exist for every row below except `figshare` and `dcat` (the four DCAT-only sources turned out to be Hub sites). `pnpm describe` then reads the schema, row count, 3 sample rows and query limits of each CKAN DataStore resource and Esri layer into `resource_describe`.
 
 Each connector implements:
 
@@ -155,15 +157,19 @@ Each connector implements:
 | Connector | Listing | Live query |
 |---|---|---|
 | `ckan` | `/api/3/action/package_search?rows=1000&start=` (+ `fq` scope) | DataStore `datastore_search(_sql)` |
-| `arcgis_hub` | `/api/search/v1/collections/dataset/items` or `/api/feed/dcat-us/1.1.json` | FeatureServer `/query` |
-| `socrata` | `/api/catalog/v1?domains=<host>` | SODA `/resource/<id>.json?$where=` |
+| `arcgis_hub` | `/api/search/v1/collections/all/items`, sorted by created | FeatureServer `/query` |
+| `socrata` | `/api/catalog/v1?domains=<host>&order=dataset_id` by offset (scroll_id repeats and skips) | SODA `/resource/<id>.json?$where=` |
 | `opendatasoft` | `/api/explore/v2.1/catalog/datasets` | Explore v2.1 `/records` |
-| `dataverse` | `/api/search?type=dataset&per_page=1000` (+ `subtree` scope) | none (files) |
-| `geonetwork` | CSW `GetRecords` or `/srv/api/search/records/_search` | none (links to services) |
+| `dataverse` | Search API: licence facet, then `type=file`, then `type=dataset`; 3 s apart (Abacus blocks bursts) | none (files) |
+| `geonetwork` | `/srv/api/search/records/_search` (Elasticsearch, sorted by uuid) | none (links to services) |
 | `dcat` | `data.json` | none |
-| `arcgis_rest` | services directory, `recipe.folders` only | FeatureServer/MapServer `/query` |
+| `arcgis_server` | services directory, `recipe.folders` or `exclude_folders` only; one dataset per layer | FeatureServer/MapServer `/query` |
 | `statcan_wds` | `getAllCubesListLite` | vector and coordinate queries; full-table CSV |
-| `web_listing` | crawl `recipe.start_urls`, match `recipe` patterns | none (files) |
+| `web_listing` | `recipe.start_urls` (+ depth 1), files by extension or `include`, `extra_urls`; formats of one layer grouped | none (files) |
+| `geocore` | `/geo?keyword_only=true&min=&max=` (mirror of open.canada.ca) | none |
+| `oai_pmh` | `ListRecords` oai_dc | none |
+| `boc_valet` | `/lists/groups/json` | `/observations/group/<g>/json` |
+| custom | Red Deer, Brandon, NatureCounts and CONP (metadata only) in `known-apis.ts` | Red Deer and Brandon JSON |
 | `figshare` | `api.figshare.com/v2` search | none (files) |
 
 ## MCP surface (draft)

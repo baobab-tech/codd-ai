@@ -26,6 +26,7 @@
     "note": "tsx src/cli/note.ts",
     "digest": "tsx src/cli/digest.ts",
     "charts": "tsx src/cli/charts.ts",
+    "describe": "tsx src/cli/describe.ts",
     "profile-source": "tsx src/cli/profile.ts",
     "autoprofile": "tsx src/cli/autoprofile.ts",
     "harvest": "tsx src/cli/harvest.ts",

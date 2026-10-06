@@ -221,6 +221,26 @@ from sources s left join v_dataset_readiness r on r.source_id = s.id
 where s.parent_id is null
 group by all;
 
+-- Describe pass (pnpm describe): schema, row count, sample rows and query limits for live-queryable resources.
+-- Keyed by the thing described, not the resource row, so it survives re-harvests and shared services are described once.
+create table if not exists resource_describe (
+  key varchar primary key,         -- datastore:<source_id>|<resource_id>, or the lowercased Esri service/layer URL
+  kind varchar,                    -- ckan_datastore | esri
+  url varchar,                     -- what was queried
+  schema json,                     -- [{name, type, alias?}] of the table or first layer
+  row_count bigint,
+  sample json,                     -- up to 3 rows, values truncated, no geometry
+  data_modified timestamp,         -- Esri editingInfo.lastEditDate (real data edit time), where exposed
+  query_caps json,                 -- Esri: layer, layers, geometry_type, max_record_count, pagination, statistics, formats, extent
+  error varchar,                   -- e.g. token required, service not started
+  described_at timestamp
+);
+create or replace view v_resource_describe as
+select r.id as resource_id, r.dataset_id, r.source_id, rd.*
+from resources r join resource_describe rd on rd.key = case
+  when r.datastore then 'datastore:' || r.source_id || '|' || regexp_extract(r.id, '[^|]+$')
+  else lower(regexp_replace(r.url, '/+$', '')) end;
+
 -- Raw HTTP probe log. One row per request; latest per (url, check) kept.
 create table if not exists probes (
   url varchar,

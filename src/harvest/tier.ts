@@ -1,7 +1,8 @@
 /** Resource tier: what an agent can do with a resource. See docs/PLAN.md "Data model". */
 export type Tier = "live_query" | "tabular_file" | "geo_file" | "document" | "link_only";
 
-const TABULAR = new Set(["CSV", "TSV", "XLS", "XLSX", "JSON", "GEOJSON", "PARQUET", "XML", "TXT", "ODS", "JSONL"]);
+const TABULAR = new Set(["CSV", "TSV", "XLS", "XLSX", "JSON", "GEOJSON", "PARQUET", "XML", "TXT", "ODS", "JSONL",
+  "SAV", "POR", "DTA", "XPT", "SAS7BDAT", "RDATA", "RDS", "NETCDF", "NC", "HDF5", "H5"]); // statistical and scientific data formats (research repositories)
 const GEO = new Set(["SHP", "KML", "KMZ", "GPKG", "GDB", "FGDB", "GML", "DWG", "DXF", "TIF", "TIFF", "GEOTIFF", "LAS", "LAZ", "E00"]);
 const DOCS = new Set(["PDF", "DOC", "DOCX", "PPT", "PPTX", "RTF", "HTML", "HTM", "EPUB"]);
 const LIVE = new Set(["ESRI REST", "ARCGIS GEOSERVICES REST API", "WFS", "WMS", "WMTS", "API", "OGC API", "SODA"]);

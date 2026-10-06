@@ -13,8 +13,9 @@ The README has the short version. The data model and statuses are in [PLAN.md](P
    - **needs_review**: a Claude session verifies it (inspects a JS app in a browser, confirms a file listing, finds the org inside a shared portal).
    - **needs_human**: a person decides (document libraries, pages with no data, which ArcGIS folders are open data).
 4. **Review** (`pnpm items`, `pnpm profile-source`). Reviewers confirm the archetype and write a `recipe` (JSON connector settings). Reviewed sources are marked `curated`, and the probe never overwrites them.
-5. **Harvest** (`pnpm harvest`, `pnpm harvest:load`). One lister per platform fetches every catalog record into local shards (`data/harvest/<source>/`, raw platform records kept), then the load step writes `datasets` and `resources`. Each resource gets a tier: live query, tabular file, geo file, document, or link only. Each record gets a kind (data, document, app, image, inventory) and a licence class, and mirrored or repeated records are marked `duplicate_of`. Done for CKAN and ArcGIS Hub; the other platforms are next.
-6. **MCP** (planned). A TypeScript MCP server for searching datasets, inspecting them, and querying resources, either live through the source API or through DuckDB over a downloaded file.
+5. **Harvest** (`pnpm harvest`, `pnpm harvest:load`). One lister per platform fetches every catalog record into local shards (`data/harvest/<source>/`, raw platform records kept), then the load step writes `datasets` and `resources`. Each resource gets a tier: live query, tabular file, geo file, document, or link only. Each record gets a kind (data, document, app, image, inventory) and a licence class, and mirrored or repeated records are marked `duplicate_of`. Done for every platform with a lister (CKAN, ArcGIS Hub, Socrata, Opendatasoft, Dataverse, GeoNetwork, ArcGIS Server, StatCan WDS, Valet, GeoCore, OAI-PMH, bespoke APIs and web listings).
+6. **Describe** (`pnpm describe`). For each live-queryable resource (CKAN DataStore, Esri layer): columns and types, row count, 3 sample rows, query limits and, for ArcGIS Online services, the last data edit. Results go to `resource_describe`, keyed by what was described, so re-harvests keep them.
+7. **MCP** (planned). A TypeScript MCP server for searching datasets, inspecting them, and querying resources, either live through the source API or through DuckDB over a downloaded file.
 
 ## Landscape analysis
 
@@ -41,6 +42,7 @@ All state lives in one DuckDB file, `db/codd.duckdb`. It is not committed. It is
 | `findings` | Narrative discoveries |
 | `open_items` | Work queue |
 | `datasets` / `resources` | Harvested catalog records and their files or APIs |
+| `resource_describe` | Schema, row count, sample rows and query limits of live resources |
 | `probes` | Raw HTTP evidence |
 
 Maintainers publish with `pnpm db:publish -m "what changed"`. Only one person or session should write at a time.
@@ -57,6 +59,7 @@ Maintainers publish with `pnpm db:publish -m "what changed"`. Only one person or
 | `pnpm note "..."` / `pnpm note --list` | Record or list findings |
 | `pnpm harvest [--platform p] [--only id,id]` | Fetch catalogs into `data/harvest/` shards |
 | `pnpm harvest:load [--only id,id]` | Load shards into `datasets` / `resources` and classify records (`--only none` reclassifies without reloading) |
+| `pnpm describe [--only ids] [--kind k]` / `pnpm describe --load` | Describe live resources into `data/describe/results.jsonl` (resumable), then load `resource_describe` |
 | `pnpm digest [--out file]` | Landscape digest |
 | `pnpm charts [--out dir]` | Landscape report charts (SVG) in `reports/charts/` |
 | `pnpm sql "..."` | Ad-hoc SQL against the database |

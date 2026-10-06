@@ -35,6 +35,9 @@ Computed per dataset in view `v_dataset_readiness` (1 = yes), from columns the h
 | Bilingual | title in English and French | `bilingual` |
 | Update cadence | declared frequency | `frequency` |
 | Access level | open, restricted, under review (where declared) | `access_level` |
+| Schema known | columns and types are published without downloading (Socrata and Opendatasoft catalogues, or the describe pass) | `datasets.extras.columns`; `resource_describe.schema` |
+| Size known | row count is published or measured | `extras.records_count`; `resource_describe.row_count` |
+| Real data freshness | last edit of the data itself, not the metadata | Socrata `extras.data_updated_at`, Opendatasoft `data_processed`, Esri `resource_describe.data_modified` |
 
 `record_kind` separates **data** from **documents** (CKAN `info`/publications, Yukon information, access-request and PIA summaries, Hub PDFs and document links), **apps** (Hub web maps, dashboards, pages), **images** (single Hub image items, mostly orthophoto tiles: Langley and Grande Prairie publish one item per tile) and **inventory** (entries for data not yet released, such as data.ontario.ca records marked under review or restricted with no resources). Compare readiness on data records; report the other kinds as their own share of each catalogue.
 
