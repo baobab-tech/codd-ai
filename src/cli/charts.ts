@@ -82,8 +82,8 @@ function hbars(o: { title: string; subtitle: string; rows: { label: string; valu
 }
 
 /** 100% stacked horizontal bars, one per group. Parts in fixed key order; labels inside segments only when they fit. */
-function stacked(o: { title: string; subtitle: string; keys: { key: string; label: string }[]; groups: { label: string; parts: Record<string, number> }[] }) {
-  const lw = 150, x0 = 20 + lw, plotW = W - x0 - 20, top = 96, band = 44, bh = 24, gap = 2;
+function stacked(o: { title: string; subtitle: string; keys: { key: string; label: string }[]; groups: { label: string; parts: Record<string, number> }[]; unit?: string; labelW?: number }) {
+  const lw = o.labelW ?? 150, x0 = 20 + lw, plotW = W - x0 - 20, top = 96, band = 44, bh = 24, gap = 2;
   const h = top + o.groups.length * band + 10;
   const keys = o.keys.map((k, i) => ({ ...k, cls: `s${i + 1}` }));
   const body = o.groups
@@ -104,7 +104,7 @@ function stacked(o: { title: string; subtitle: string; keys: { key: string; labe
           return s + inside;
         })
         .join("");
-      return `<text class="l" x="${x0 - 10}" y="${y + bh / 2 + 4}" text-anchor="end">${esc(g.label)}</text><text class="m" x="${x0 - 10}" y="${y + bh / 2 + 18}" text-anchor="end">${fmt(total)} records</text>${segs}`;
+      return `<text class="l" x="${x0 - 10}" y="${y + bh / 2 + 4}" text-anchor="end">${esc(g.label)}</text><text class="m" x="${x0 - 10}" y="${y + bh / 2 + 18}" text-anchor="end">${fmt(total)} ${o.unit ?? "records"}</text>${segs}`;
     })
     .join("\n");
   const desc = o.groups.map((g) => `${g.label}: ${keys.map((k) => `${k.label} ${fmt(g.parts[k.key] ?? 0)}`).join(", ")}`).join(". ");
@@ -218,6 +218,58 @@ const KINDS = [{ key: "data", label: "Data" }, { key: "document", label: "Docume
     rows: rows.map((r) => ({ label: NAMES[r.portal] ?? r.portal, value: (r.ds / r.n) * 100, display: `${pct((r.ds / r.n) * 100)} of ${fmt(r.n)}` })),
     max: 100, labelW: 180, ticks: [0, 25, 50, 75, 100], tickFmt: (n) => `${n}%`,
   });
+}
+
+// 6. Best resource per data record.
+{
+  const rows = await q(`select coalesce(best_tier, 'none') as tier, count(*)::int as n from datasets where duplicate_of is null and record_kind = 'data' group by 1`);
+  const total = rows.reduce((a, r) => a + r.n, 0);
+  const TIERS: [string, string][] = [["tabular_file", "Tabular file (CSV, XLSX, JSON)"], ["live_query", "Live query API"], ["geo_file", "GIS file (SHP, KML, GDB)"], ["document", "Document only (PDF, HTML)"], ["link_only", "Link, unknown content"], ["none", "No resources"]];
+  const by = Object.fromEntries(rows.map((r) => [r.tier, r.n]));
+  charts["best-resource"] = hbars({
+    title: "Best resource per data record",
+    subtitle: `How an agent can get each of ${fmt(total)} unique data records (CKAN and ArcGIS Hub)`,
+    rows: TIERS.map(([k, label]) => ({ label, value: by[k] ?? 0, display: `${fmt(by[k] ?? 0)} (${pct(((by[k] ?? 0) / total) * 100)})` })),
+    labelW: 210, ticks: [0, 10000, 20000],
+  });
+}
+
+// 7. Sources by access pattern (archetype and status).
+{
+  const rows = await q(`select case
+      when archetype = 'platform_api' and status = 'harvested' then 'Catalog API, harvested'
+      when archetype = 'platform_api' and status in ('identified', 'harvestable') then 'Catalog API, not yet harvested'
+      when archetype = 'known_api' and status <> 'not_data' then 'Bespoke API'
+      when archetype = 'esri_rest' and status <> 'not_data' then 'Esri map server'
+      when archetype = 'web_listing' then 'Web page of data files'
+      when archetype = 'platform_api' and status = 'proposed' then 'Blocked catalog API'
+      when status = 'not_data' then 'Checked, not a data source'
+      else 'Other' end as pattern, count(*)::int as n
+    from sources where status <> 'needs_profiling' group by 1 order by n desc`);
+  charts["access-patterns"] = hbars({
+    title: "Sources by access pattern",
+    subtitle: "How an agent reaches each identified source (one org can have several)",
+    rows: rows.map((r) => ({ label: r.pattern, value: r.n, display: fmt(r.n) })),
+    labelW: 210, ticks: [0, 50, 100, 150],
+  });
+}
+
+// 8–9. Org readiness by type and by province (best source per org, same rule as the digest).
+{
+  const BEST = `with best as (
+      select o.id, o.org_type, o.province, max(case when s.status in ('identified','harvestable','harvested') then 3 when s.status in ('proposed','needs_human') then 2 when s.id is not null then 1 else 0 end) as r
+      from orgs o left join org_sources os on os.org_id = o.id left join sources s on s.id = os.source_id group by all)`;
+  const keys = [{ key: "3", label: "Source identified" }, { key: "2", label: "Blocked or in review" }, { key: "1", label: "Not a data source" }, { key: "0", label: "Dead link or no URL" }];
+  const grouped = (rows: Record<string, any>[], dim: string) => {
+    const groups = new Map<string, Record<string, number>>();
+    for (const r of rows) { const g = groups.get(r[dim]) ?? {}; g[String(r.r)] = r.n; groups.set(r[dim], g); }
+    return [...groups.entries()].map(([label, parts]) => ({ label, parts })).sort((a, b) => Object.values(b.parts).reduce((x, y) => x + y, 0) - Object.values(a.parts).reduce((x, y) => x + y, 0));
+  };
+  const TYPES: Record<string, string> = { "Municipal Government": "Municipal", "Provincial Agency": "Provincial agency", "Provincial / Territorial Government": "Provincial / territorial", "National/Federal Government": "Federal", "Indigenous Government": "Indigenous government", "Crown corporation": "Crown corporation" };
+  const byType = (await q(`${BEST} select coalesce(org_type, '?') as org_type, r, count(*)::int as n from best group by all`)).map((r) => ({ ...r, org_type: TYPES[r.org_type] ?? r.org_type }));
+  charts["readiness-by-org-type"] = stacked({ title: "Organizations with a usable source, by type", subtitle: "Best source per organization in the directory", keys, groups: grouped(byType, "org_type"), unit: "orgs" });
+  const byProv = await q(`${BEST} select coalesce(province, '?') as province, r, count(*)::int as n from best where province is not null and province <> '?' group by all`);
+  charts["readiness-by-province"] = stacked({ title: "Organizations with a usable source, by province", subtitle: "Best source per organization in the directory", keys, groups: grouped(byProv, "province"), unit: "orgs" });
 }
 
 mkdirSync(OUT, { recursive: true });

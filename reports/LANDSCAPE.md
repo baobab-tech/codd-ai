@@ -79,6 +79,8 @@ Kinds change the picture per portal. open.alberta.ca's 37,499 records hold 3,020
 
 Best way to get each data record:
 
+![Best resource per data record](charts/best-resource.svg)
+
 | Best resource | Data records | Share |
 |---|---:|---:|
 | Tabular file (CSV, XLSX, JSON, XML, GeoJSON) | 23,846 | 37.7% |
@@ -146,6 +148,8 @@ The other per-portal scores are in the [digest](digest-2026-10-06.md#readiness-b
 
 ## Who is ready
 
+![Organizations with a usable source, by type](charts/readiness-by-org-type.svg)
+
 Orgs with an identified source, by type:
 
 | Type | Orgs | Ready |
@@ -162,9 +166,13 @@ Orgs with an identified source, by type:
 
 Federal organizations run their own APIs instead of a catalog platform. Statistics Canada's Web Data Service lists 8,271 tables in one call, each downloadable whole or queryable by series. The Bank of Canada's Valet API serves 16,173 time series as JSON, CSV or XML. geo.ca sits on GeoCore. CMHC publishes inside open.canada.ca.
 
+![Organizations with a usable source, by province](charts/readiness-by-province.svg)
+
 By province, Nova Scotia (10 of 10), Manitoba (6 of 6), Newfoundland and Labrador (4 of 4), Saskatchewan, the Northwest Territories and Yukon (3 of 3 each) and Nunavut (1 of 1) are complete. Alberta (19 of 22), New Brunswick (7 of 9) and Ontario (97 of 104) have the most gaps, mostly dead links.
 
 ## How the data is reached
+
+![Sources by access pattern](charts/access-patterns.svg)
 
 | Access pattern | Sources | Examples |
 |---|---:|---|

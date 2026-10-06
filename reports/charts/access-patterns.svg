@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 284" width="760" height="284" role="img" aria-labelledby="t d">
+<style>
+.t{font:600 16px system-ui,-apple-system,"Segoe UI",sans-serif} .st,.v{font:12px system-ui,-apple-system,"Segoe UI",sans-serif} .l{font:13px system-ui,-apple-system,"Segoe UI",sans-serif} .m{font:11px system-ui,-apple-system,"Segoe UI",sans-serif} .in{font:600 11px system-ui,-apple-system,"Segoe UI",sans-serif}
+.v{font-variant-numeric:tabular-nums} .grid,.base{stroke-width:1}
+.bg{fill:#fcfcfb} .t,.l{fill:#0b0b0b} .st,.v{fill:#52514e} .m{fill:#898781} .grid{stroke:#e1e0d9} .base{stroke:#c3c2b7} .s1{fill:#2a78d6} .s2{fill:#eb6834} .s3{fill:#1baf7a} .s4{fill:#eda100} .s5{fill:#e87ba4}
+.i1,.i2{fill:#ffffff} .i3,.i4,.i5{fill:#0b0b0b}
+@media (prefers-color-scheme: dark){.bg{fill:#1a1a19} .t,.l{fill:#ffffff} .st,.v{fill:#c3c2b7} .m{fill:#898781} .grid{stroke:#2c2c2a} .base{stroke:#383835} .s1{fill:#3987e5} .s2{fill:#d95926} .s3{fill:#199e70} .s4{fill:#c98500} .s5{fill:#d55181} .i3,.i5{fill:#ffffff}}
+</style>
+<title id="t">Sources by access pattern</title><desc id="d">How an agent reaches each identified source (one org can have several). Catalog API, harvested: 144; Catalog API, not yet harvested: 48; Web page of data files: 18; Bespoke API: 8; Esri map server: 5; Blocked catalog API: 2; Checked, not a data source: 2.</desc>
+<rect class="bg" width="760" height="284" rx="8"/>
+<text class="t" x="20" y="30">Sources by access pattern</text>
+<text class="st" x="20" y="50">How an agent reaches each identified source (one org can have several)</text>
+<line class="grid" x1="230" x2="230" y1="66" y2="258"/><text class="m" x="230" y="272" text-anchor="middle">0</text><line class="grid" x1="375.8333333333333" x2="375.8333333333333" y1="66" y2="258"/><text class="m" x="375.8333333333333" y="272" text-anchor="middle">50</text><line class="grid" x1="521.6666666666666" x2="521.6666666666666" y1="66" y2="258"/><text class="m" x="521.6666666666666" y="272" text-anchor="middle">100</text><line class="grid" x1="667.5" x2="667.5" y1="66" y2="258"/><text class="m" x="667.5" y="272" text-anchor="middle">150</text><line class="base" x1="230" x2="230" y1="66" y2="258"/>
+<text class="l" x="220" y="85" text-anchor="end">Catalog API, harvested</text><path class="s1" d="M230,72h416a4,4 0 0 1 4,4v8a4,4 0 0 1 -4,4h-416z"><title>Catalog API, harvested: 144</title></path><text class="v" x="656" y="85">144</text>
+<text class="l" x="220" y="111" text-anchor="end">Catalog API, not yet harvested</text><path class="s1" d="M230,98h136a4,4 0 0 1 4,4v8a4,4 0 0 1 -4,4h-136z"><title>Catalog API, not yet harvested: 48</title></path><text class="v" x="376" y="111">48</text>
+<text class="l" x="220" y="137" text-anchor="end">Web page of data files</text><path class="s1" d="M230,124h48.5a4,4 0 0 1 4,4v8a4,4 0 0 1 -4,4h-48.5z"><title>Web page of data files: 18</title></path><text class="v" x="288.5" y="137">18</text>
+<text class="l" x="220" y="163" text-anchor="end">Bespoke API</text><path class="s1" d="M230,150h19.333333333333332a4,4 0 0 1 4,4v8a4,4 0 0 1 -4,4h-19.333333333333332z"><title>Bespoke API: 8</title></path><text class="v" x="259.33333333333337" y="163">8</text>
+<text class="l" x="220" y="189" text-anchor="end">Esri map server</text><path class="s1" d="M230,176h10.583333333333334a4,4 0 0 1 4,4v8a4,4 0 0 1 -4,4h-10.583333333333334z"><title>Esri map server: 5</title></path><text class="v" x="250.58333333333334" y="189">5</text>
+<text class="l" x="220" y="215" text-anchor="end">Blocked catalog API</text><path class="s1" d="M230,202h2.9166666666666665a2.9166666666666665,2.9166666666666665 0 0 1 2.9166666666666665,2.9166666666666665v10.166666666666668a2.9166666666666665,2.9166666666666665 0 0 1 -2.9166666666666665,2.9166666666666665h-2.9166666666666665z"><title>Blocked catalog API: 2</title></path><text class="v" x="241.83333333333334" y="215">2</text>
+<text class="l" x="220" y="241" text-anchor="end">Checked, not a data source</text><path class="s1" d="M230,228h2.9166666666666665a2.9166666666666665,2.9166666666666665 0 0 1 2.9166666666666665,2.9166666666666665v10.166666666666668a2.9166666666666665,2.9166666666666665 0 0 1 -2.9166666666666665,2.9166666666666665h-2.9166666666666665z"><title>Checked, not a data source: 2</title></path><text class="v" x="241.83333333333334" y="241">2</text>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 258" width="760" height="258" role="img" aria-labelledby="t d">
+<style>
+.t{font:600 16px system-ui,-apple-system,"Segoe UI",sans-serif} .st,.v{font:12px system-ui,-apple-system,"Segoe UI",sans-serif} .l{font:13px system-ui,-apple-system,"Segoe UI",sans-serif} .m{font:11px system-ui,-apple-system,"Segoe UI",sans-serif} .in{font:600 11px system-ui,-apple-system,"Segoe UI",sans-serif}
+.v{font-variant-numeric:tabular-nums} .grid,.base{stroke-width:1}
+.bg{fill:#fcfcfb} .t,.l{fill:#0b0b0b} .st,.v{fill:#52514e} .m{fill:#898781} .grid{stroke:#e1e0d9} .base{stroke:#c3c2b7} .s1{fill:#2a78d6} .s2{fill:#eb6834} .s3{fill:#1baf7a} .s4{fill:#eda100} .s5{fill:#e87ba4}
+.i1,.i2{fill:#ffffff} .i3,.i4,.i5{fill:#0b0b0b}
+@media (prefers-color-scheme: dark){.bg{fill:#1a1a19} .t,.l{fill:#ffffff} .st,.v{fill:#c3c2b7} .m{fill:#898781} .grid{stroke:#2c2c2a} .base{stroke:#383835} .s1{fill:#3987e5} .s2{fill:#d95926} .s3{fill:#199e70} .s4{fill:#c98500} .s5{fill:#d55181} .i3,.i5{fill:#ffffff}}
+</style>
+<title id="t">Best resource per data record</title><desc id="d">How an agent can get each of 63,211 unique data records (CKAN and ArcGIS Hub). Tabular file (CSV, XLSX, JSON): 23,846 (37.7%); Live query API: 20,094 (31.8%); GIS file (SHP, KML, GDB): 4,170 (6.6%); Document only (PDF, HTML): 8,269 (13.1%); Link, unknown content: 6,757 (10.7%); No resources: 75 (0.1%).</desc>
+<rect class="bg" width="760" height="258" rx="8"/>
+<text class="t" x="20" y="30">Best resource per data record</text>
+<text class="st" x="20" y="50">How an agent can get each of 63,211 unique data records (CKAN and ArcGIS Hub)</text>
+<line class="grid" x1="230" x2="230" y1="66" y2="232"/><text class="m" x="230" y="246" text-anchor="middle">0</text><line class="grid" x1="406.1301685817328" x2="406.1301685817328" y1="66" y2="232"/><text class="m" x="406.1301685817328" y="246" text-anchor="middle">10,000</text><line class="grid" x1="582.2603371634656" x2="582.2603371634656" y1="66" y2="232"/><text class="m" x="582.2603371634656" y="246" text-anchor="middle">20,000</text><line class="base" x1="230" x2="230" y1="66" y2="232"/>
+<text class="l" x="220" y="85" text-anchor="end">Tabular file (CSV, XLSX, JSON)</text><path class="s1" d="M230,72h416a4,4 0 0 1 4,4v8a4,4 0 0 1 -4,4h-416z"><title>Tabular file (CSV, XLSX, JSON): 23,846 (37.7%)</title></path><text class="v" x="656" y="85">23,846 (37.7%)</text>
+<text class="l" x="220" y="111" text-anchor="end">Live query API</text><path class="s1" d="M230,98h349.91596074813384a4,4 0 0 1 4,4v8a4,4 0 0 1 -4,4h-349.91596074813384z"><title>Live query API: 20,094 (31.8%)</title></path><text class="v" x="589.9159607481338" y="111">20,094 (31.8%)</text>
+<text class="l" x="220" y="137" text-anchor="end">GIS file (SHP, KML, GDB)</text><path class="s1" d="M230,124h69.44628029858258a4,4 0 0 1 4,4v8a4,4 0 0 1 -4,4h-69.44628029858258z"><title>GIS file (SHP, KML, GDB): 4,170 (6.6%)</title></path><text class="v" x="309.44628029858256" y="137">4,170 (6.6%)</text>
+<text class="l" x="220" y="163" text-anchor="end">Document only (PDF, HTML)</text><path class="s1" d="M230,150h141.64203640023484a4,4 0 0 1 4,4v8a4,4 0 0 1 -4,4h-141.64203640023484z"><title>Document only (PDF, HTML): 8,269 (13.1%)</title></path><text class="v" x="381.6420364002348" y="163">8,269 (13.1%)</text>
+<text class="l" x="220" y="189" text-anchor="end">Link, unknown content</text><path class="s1" d="M230,176h115.01115491067684a4,4 0 0 1 4,4v8a4,4 0 0 1 -4,4h-115.01115491067684z"><title>Link, unknown content: 6,757 (10.7%)</title></path><text class="v" x="355.01115491067685" y="189">6,757 (10.7%)</text>
+<text class="l" x="220" y="215" text-anchor="end">No resources</text><path class="s1" d="M230,202h1a1,1 0 0 1 1,1v14a1,1 0 0 1 -1,1h-1z"><title>No resources: 75 (0.1%)</title></path><text class="v" x="237.320976264363" y="215">75 (0.1%)</text>
+</svg>
