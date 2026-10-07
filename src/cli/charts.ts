@@ -276,7 +276,7 @@ const KINDS = [{ key: "data", label: "Data" }, { key: "document", label: "Docume
 // 8–9. Org readiness by type and by province (best source per org, same rule as the digest).
 {
   const BEST = `with best as (
-      select o.id, o.org_type, o.province, max(case when s.status in ('identified','harvestable','harvested') then 3 when s.status in ('proposed','needs_human') then 2 when s.id is not null then 1 else 0 end) as r
+      select o.id, o.org_type, o.province, max(case when s.status in ('identified','harvestable','harvested') then 3 when s.status in ('proposed','needs_human','blocked') then 2 when s.id is not null then 1 else 0 end) as r
       from orgs o left join org_sources os on os.org_id = o.id left join sources s on s.id = os.source_id group by all)`;
   const keys = [{ key: "3", label: "Source identified" }, { key: "2", label: "Blocked or in review" }, { key: "1", label: "Not a data source" }, { key: "0", label: "Dead link or no URL" }];
   const grouped = (rows: Record<string, any>[], dim: string) => {

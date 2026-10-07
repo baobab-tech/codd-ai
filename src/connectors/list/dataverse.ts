@@ -6,6 +6,9 @@
  * About 650 requests for Borealis's 25k datasets and 590k files, instead of one export call per dataset.
  * robots.txt on Dataverse hosts disallows /api; the project uses documented APIs anyway (decision 2026-10-06).
  */
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { ROOT } from "../../db.js";
 import { UA } from "../../http.js";
 import { normalizeFormat, tierOf } from "../../harvest/tier.js";
 import type { HarvestRecord } from "./ckan.js";
@@ -14,7 +17,7 @@ const PAGE = 1000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const TIER_RANK = ["link_only", "document", "geo_file", "tabular_file", "live_query"];
 
-async function getJson(url: string, tries = 4): Promise<any> {
+async function getJson(url: string, tries = 7): Promise<any> {
   for (let i = 1; ; i++) {
     try {
       const res = await fetch(url, { headers: { "user-agent": UA, accept: "application/json" }, signal: AbortSignal.timeout(180_000) });
@@ -25,7 +28,7 @@ async function getJson(url: string, tries = 4): Promise<any> {
       return await res.json();
     } catch (e) {
       if (i >= tries || String(e).includes("not retried")) throw e;
-      await sleep(5_000 * i * i);
+      await sleep(Math.min(5_000 * i * i, 180_000)); // network blips on long runs: back off up to 3 min
     }
   }
 }
@@ -46,18 +49,29 @@ const fmtOf = (ct: string | undefined, name: string | undefined) =>
 
 interface FileRow { id: string; name: string; url: string; format: string | null; size: number | null; restricted: boolean; variables: number | null; observations: number | null; published: string | null }
 
+// Pages are cached on disk (data/harvest/cache/<host>/) so a failed run resumes where it stopped.
+async function cachedJson(url: string, gapMs: number): Promise<{ j: any; cached: boolean }> {
+  const dir = join(ROOT, "data/harvest/cache", new URL(url).host);
+  const file = join(dir, url.replace(/^https?:\/\/[^/]+/, "").replace(/[^a-zA-Z0-9]+/g, "_").slice(0, 200) + ".json");
+  if (existsSync(file)) return { j: JSON.parse(readFileSync(file, "utf8")), cached: true };
+  const j = await getJson(url);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(file, JSON.stringify(j));
+  await sleep(gapMs);
+  return { j, cached: false };
+}
+
 async function pageAll(base: string, q: string, onPage?: (start: number, total: number) => void, gapMs = 1_000) {
   const out: any[] = [];
   let start = 0, total = Infinity;
   while (start < total) {
-    const j = await getJson(`${base}/api/search?q=*&${q}&per_page=${PAGE}&start=${start}&sort=date&order=asc`);
+    const { j } = await cachedJson(`${base}/api/search?q=*&${q}&per_page=${PAGE}&start=${start}&sort=date&order=asc`, gapMs);
     total = j.data?.total_count ?? 0;
     const items: any[] = j.data?.items ?? [];
     onPage?.(start, total);
     if (!items.length) break;
     out.push(...items);
     start += items.length;
-    if (start < total) await sleep(gapMs);
   }
   return out;
 }
@@ -116,7 +130,6 @@ export async function* listDataverse(sourceId: string, base: string, opts: { gap
   const licence = new Map<string, string>();
   for (const l of labels) {
     for (const d of await pageAll(base, `type=dataset&fq=license:${encodeURIComponent(`"${l}"`)}`, undefined, gap)) licence.set(d.global_id, l);
-    await sleep(gap);
   }
   // 2. Files, grouped by dataset.
   const files = new Map<string, FileRow[]>();

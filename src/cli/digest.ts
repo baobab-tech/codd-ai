@@ -42,7 +42,7 @@ table(await q(`select platform, count(*)::int as orgs, round(100.0 * count(*) / 
 
 h("Org readiness (best source status per org)");
 table(await q(`with best as (
-    select o.id, max(case when s.status in ('identified','harvestable','harvested') then 3 when s.status in ('proposed','needs_human') then 2 when s.status = 'not_data' then 1 when s.id is not null then 1 else 0 end) as r
+    select o.id, max(case when s.status in ('identified','harvestable','harvested') then 3 when s.status in ('proposed','needs_human','blocked') then 2 when s.status = 'not_data' then 1 when s.id is not null then 1 else 0 end) as r
     from orgs o left join org_sources os on os.org_id = o.id left join sources s on s.id = os.source_id group by 1)
   select case r when 3 then 'source identified (API or confirmed recipe)' when 2 then 'blocked or in review' when 1 then 'checked: not a data source' else 'no source (dead link or no URL)' end as readiness,
     count(*)::int as orgs, round(100.0 * count(*) / sum(count(*)) over (), 1) as pct
@@ -144,7 +144,7 @@ table(await q(`select count(*)::int as orgs_probed,
   sum(case when (value->>'https')::bool then 1 else 0 end)::int as https,
   median((value->>'ms')::int)::int as median_ms
   from observations where key = 'access'`));
-table(await q(`select key, count(*)::int as orgs from observations where key in ('html_blocked_api_ok', 'rate_challenge') group by 1`));
+table(await q(`select key, count(*)::int as orgs from observations where key in ('html_blocked_api_ok', 'rate_challenge', 'api_blocked') group by 1`));
 table(await q(`select value->>'blocked' as block_signature, count(*)::int as orgs from observations where key = 'access' and (value->>'blocked') is not null group by 1`));
 
 h("robots.txt");

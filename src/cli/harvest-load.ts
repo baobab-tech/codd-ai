@@ -48,7 +48,7 @@ await all(conn, `update datasets set licence_class = case
 // marked under_review or restricted, with no resources).
 await all(conn, `update datasets set record_kind = case
     when access_level in ('under_review', 'restricted') and coalesce(resource_count, 0) = 0 then 'inventory'
-    when type = 'Image' then 'image'  -- one Hub image item, mostly orthophoto tiles (Langley, Grande Prairie); Image Services stay data
+    when type = 'Image' or type ilike 'synthetic aper%radar' then 'image'  -- Hub image items; GeoCore satellite radar scenes (one record per scene)  -- one Hub image item, mostly orthophoto tiles (Langley, Grande Prairie); Image Services stay data
     when lower(coalesce(type, '')) in ('info', 'information', 'access-requests', 'pia-summaries', 'publication', 'publications', 'documentation', 'pdf', 'document link', 'microsoft word', 'microsoft powerpoint') then 'document'
     when type in ('Web Map', 'Web Experience', 'Dashboard', 'Hub Page', 'Hub Site Application', 'Site Application', 'Web Mapping Application', 'StoryMap', 'Story Map', 'Application', 'Form', 'Insights Page', 'Web Scene', 'Mobile Application', 'Notebook', 'project', 'campaign', 'platform', 'instrument_details', 'deployment_details',
       'chart', 'story', 'filter', 'calendar', 'form', 'datalens', 'visualization', 'measure') then 'app'  -- Socrata derived views and pages

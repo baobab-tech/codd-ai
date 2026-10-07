@@ -102,7 +102,7 @@ Everything lives in one DuckDB file, published as GitHub release assets (`pnpm d
 
 ### Source status
 
-`needs_profiling` (probe found no API) → `proposed` (autoprofile draft, awaiting review) or `needs_human` → `identified` (platform API confirmed) / `harvestable` (recipe confirmed) → `harvested`. Also `not_data`.
+`needs_profiling` (probe found no API) → `proposed` (autoprofile draft, awaiting review) or `needs_human` → `identified` (platform API confirmed) / `harvestable` (recipe confirmed) → `harvested`. Also `not_data` (checked, not a data source) and `blocked` (bot-blocked; see `observations` key `api_blocked`).
 
 `curated = true` marks sources decided by profiling, whether auto-applied, proposed or set by hand. The probe never overwrites or relinks them. It only records what it sees for that org as an observation.
 

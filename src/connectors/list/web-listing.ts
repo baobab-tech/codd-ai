@@ -6,6 +6,9 @@
  *   include          regexes a file URL must match (absolute, or path when it starts with ^/)
  *   file_hosts       hosts files must live on
  *   extra_urls       known file URLs to add (links the pages hide)
+ *   follow           regex of pages to read from any page (pagination)
+ *   files_without_extension  include matches need no extension (format from the link's row)
+ *   group_by: "page" one record per page, titled by its h1 (portal detail pages)
  *   licence, licence_url, crawl_delay_s
  * Links are read from <a href> and from absolute URLs anywhere in the page text, which catches links held in
  * embedded JSON (Metrolinx's __NEXT_DATA__). Windows backslashes in links are normalized (Whitehorse).
@@ -21,21 +24,33 @@ const DEFAULT_EXT = ["csv", "xlsx", "xls", "json", "geojson", "xml", "zip", "kml
 const MAX_PAGES = 400;
 
 async function getText(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url, { headers: { "user-agent": UA, accept: "text/html,application/xhtml+xml,*/*;q=0.8" }, signal: AbortSignal.timeout(60_000), redirect: "follow" });
-    if (!res.ok || !/html|text/.test(res.headers.get("content-type") ?? "")) return null;
-    return await res.text();
-  } catch { return null; }
+  for (let i = 1; i <= 3; i++) {
+    try {
+      const res = await fetch(url, { headers: { "user-agent": UA, accept: "text/html,application/xhtml+xml,*/*;q=0.8" }, signal: AbortSignal.timeout(60_000), redirect: "follow" });
+      if (res.status >= 500 && i < 3) { await sleep(10_000 * i); continue; } // NWT Geomatics answers 504 intermittently
+      if (!res.ok || !/html|text/.test(res.headers.get("content-type") ?? "")) return null;
+      return await res.text();
+    } catch { if (i < 3) await sleep(10_000 * i); }
+  }
+  return null;
 }
 
-function links(html: string, pageUrl: string, scanText: boolean): { url: string; text: string | null }[] {
+// Text of a link's table row (cells joined with spaces) or list item.
+function rowText($: cheerio.CheerioAPI, a: any): string | null {
+  const tr = $(a).closest("tr");
+  const t = tr.length ? tr.find("td,th").map((_, c) => $(c).text()).get().join(" ") : $(a).closest("li").text();
+  return t.replace(/\s+/g, " ").trim().slice(0, 300) || null;
+}
+type Link = { url: string; text: string | null; ctx?: string | null };
+function links(html: string, pageUrl: string, scanText: boolean): Link[] {
   const $ = cheerio.load(html);
-  const out: { url: string; text: string | null }[] = [];
-  const add = (href: string | undefined, text: string | null) => {
+  const out: Link[] = [];
+  const add = (href: string | undefined, text: string | null, ctx: string | null = null) => {
     if (!href || /^(mailto|javascript|tel):/i.test(href)) return;
-    try { out.push({ url: new URL(href.trim().replace(/\\/g, "/"), pageUrl).toString(), text }); } catch { /* bad href */ }
+    try { out.push({ url: new URL(href.trim().replace(/\\/g, "/"), pageUrl).toString(), text, ctx }); } catch { /* bad href */ }
   };
-  $("a[href]").each((_, a) => add($(a).attr("href"), $(a).text().replace(/\s+/g, " ").trim() || null));
+  // ctx: the link's table row or list item, which often names the format (NL: "CSV ... Download file").
+  $("a[href]").each((_, a) => add($(a).attr("href"), $(a).text().replace(/\s+/g, " ").trim() || null, rowText($, a)));
   // URLs held in scripts or embedded JSON (Metrolinx's __NEXT_DATA__), only when the recipe says so: raw-text scanning picks up escaped HTML otherwise.
   if (scanText) for (const m of html.matchAll(/https?:\/\/[^\s"'<>\\)&]+/g)) add(m[0], null);
   return out;
@@ -56,22 +71,34 @@ export async function* listWebListing(sourceId: string, base: string, opts: { ga
   const startHost = new URL(start[0]).host;
   const pages = [...start];
   const seenPages = new Set(pages);
-  const files = new Map<string, { url: string; text: string | null; page: string }>();
+  const files = new Map<string, { url: string; text: string | null; page: string; ctx?: string | null }>();
+  const headings = new Map<string, string>();
+  const follow = r.follow ? new RegExp(r.follow, "i") : null;
   for (let i = 0; i < pages.length && i < MAX_PAGES; i++) {
     const page = pages[i];
     opts.onPage?.(i, pages.length);
     const html = await getText(page);
     await sleep(gap);
     if (!html) continue;
+    const $p = cheerio.load(html);
+    const h1 = $p("h1").first().text().replace(/\s+/g, " ").trim();
+    const h = /^(dataset )?details$|^open data|^data(sets)?$/i.test(h1) ? $p("h2").first().text().replace(/\s+/g, " ").trim() : h1; // NL: <h1>Dataset Details</h1><h2>title</h2>
+    if (h) headings.set(page, h);
     for (const l of links(html, page, !!r.parse)) {
       let u: URL;
       try { u = new URL(l.url); } catch { continue; }
       const ext = extOf(l.url);
-      const pathMatch = ext !== null && (include.length ? include.some((p: { re: RegExp; path: boolean }) => p.re.test(p.path ? decodeURI(u.pathname) : l.url)) : exts.has(ext));
+      const pathMatch = (ext !== null || (r.files_without_extension && include.length > 0)) && (include.length ? include.some((p: { re: RegExp; path: boolean }) => p.re.test(p.path ? decodeURI(u.pathname) : l.url)) : ext !== null && exts.has(ext));
       const hostOk = !r.file_hosts || r.file_hosts.some((h: string) => (u.host + u.pathname).startsWith(h.replace(/^https?:\/\//, "")));
       if (pathMatch && hostOk) {
         const prev = files.get(l.url);
-        if (!prev || (!prev.text && l.text)) files.set(l.url, { url: l.url, text: l.text ?? prev?.text ?? null, page });
+        if (!prev || (!prev.text && l.text)) files.set(l.url, { url: l.url, text: l.text ?? prev?.text ?? null, page, ctx: l.ctx ?? prev?.ctx ?? null });
+        continue;
+      }
+      // Pagination or other pages to read from any page (recipe.follow, e.g. "\\?page=\\d+$").
+      if (follow && u.host === startHost && follow.test(l.url)) {
+        const key = u.toString().replace(/#.*$/, "");
+        if (!seenPages.has(key)) (seenPages.add(key), pages.push(key));
         continue;
       }
       // Depth 1: follow same-site HTML pages from the start pages only.
@@ -95,7 +122,7 @@ export async function* listWebListing(sourceId: string, base: string, opts: { ga
   const LINKWORD = /^(read more|more|download|csv|xlsx?|excel|pdf|zip|shp|dwg|kml|kmz|gdb|fgdb|geojson|json|here|link|view( the)? metadata|metadata|data)$/i;
   const groups = new Map<string, (typeof files extends Map<string, infer V> ? V : never)[]>();
   for (const f of files.values()) {
-    const key = `${f.page}|${stem(f.url) || f.url}`;
+    const key = r.group_by === "page" ? f.page : `${f.page}|${stem(f.url) || f.url}`;
     groups.set(key, [...(groups.get(key) ?? []), f]);
   }
   const TIER_RANK = ["link_only", "document", "geo_file", "tabular_file", "live_query"];
@@ -103,10 +130,11 @@ export async function* listWebListing(sourceId: string, base: string, opts: { ga
     const native = fs.length === 1 ? fs[0].url : key;
     const id = `${sourceId}|${native}`;
     const fname = (u: string) => decodeURIComponent(new URL(u).pathname.split("/").pop() ?? u);
-    const named = fs.map((f) => f.text).find((t) => t && t.length > 2 && !LINKWORD.test(t));
-    const title = named ?? (stem(fs[0].url) || fname(fs[0].url)).replace(/\b\w/g, (c) => c.toUpperCase());
+    const named = fs.map((f) => f.text).find((t) => t && t.length > 2 && !LINKWORD.test(t) && !/^https?:\/\//i.test(t)); // NWT links show the URL as text
+    const heading = headings.get(fs[0].page);
+    const title = (r.group_by === "page" ? heading : null) ?? (named && named.length < 8 && heading ? `${heading}: ${named}` : named) ?? (stem(fs[0].url) || fname(fs[0].url)).replace(/\b\w/g, (c) => c.toUpperCase());
     const resources = fs.map((f, i) => {
-      const format = normalizeFormat(null, f.url);
+      const format = extOf(f.url) ? normalizeFormat(null, f.url) : normalizeFormat(`${f.text ?? ""} ${f.ctx ?? ""}`.match(/\b(CSV|XLSX|XLS|EXCEL|JSON|GEOJSON|ZIP|KMZ|KML|SHP|PDF|XML|TXT)\b/i)?.[1] ?? null);
       return { id: `${id}|${i}`, dataset_id: id, source_id: sourceId, name: fname(f.url), url: f.url, format, mimetype: null, size: null, datastore: false, tier: tierOf(format, { url: f.url, name: fname(f.url) }), modified: null };
     });
     return {

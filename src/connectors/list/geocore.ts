@@ -77,7 +77,7 @@ export async function* listGeocore(sourceId: string, base: string, opts: { gapMs
     total = Number(items[0]?.total ?? 0);
     opts.onPage?.(min - 1, total);
     if (!items.length) break;
-    yield items.map((x) => mapGeocore(sourceId, x, now));
+    yield items.filter((x) => typeof x.id === "string" && x.id).map((x) => mapGeocore(sourceId, x, now)); // a few rows come back malformed (text in row_num, no id)
     min += PAGE;
     if (min <= total) await sleep(opts.gapMs ?? 1_000);
   }

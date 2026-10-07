@@ -15,6 +15,21 @@ Read, in order: `CLAUDE.md` (conventions, review rules, three parts), `docs/PLAN
 
 Harvest shards (`data/harvest/<source>/` with mapped and **raw** platform records) are local and gitignored, and are **not** in the published DB. They exist on the machine that ran the harvest. Anywhere else, re-run `pnpm harvest` (minutes) before anything that needs raw records.
 
+## Resume here (2026-10-06, laptop closed mid-run)
+
+Two jobs were interrupted; both resume where they stopped:
+
+```bash
+pnpm harvest --platform dataverse --only dataverse:borealisdata.ca   # pages cached in data/harvest/cache/borealisdata.ca (168 of ~640 done)
+pnpm harvest:load --only dataverse:borealisdata.ca
+pnpm describe --parallel 16 && pnpm describe --load                   # ~1,100 new layers left; done keys are skipped
+pnpm digest --out reports/digest-$(date +%F).md && pnpm charts
+```
+
+Then refresh `reports/LANDSCAPE.md` and the README table from the new digest: every platform is now harvested (Socrata, Dataverse, Opendatasoft, GeoNetwork, ArcGIS Server, StatCan WDS, Valet, GeoCore, FRDR, bespoke APIs, web listings), plus the describe pass (28,212 resources: columns, row counts, samples, edit dates). The report still describes CKAN and Hub only. Commit, push, `pnpm db:publish`.
+
+Decisions this session: Abacus (UBC) is flagged bot-blocked (`sources.status='blocked'`, observation `api_blocked`), not harvested. StatCan keeps the Statistics Canada Open Licence; Valet and Red Deer have no licence in their APIs and stay blank. GeoCore's 95,750 Sentinel-1/RADARSAT scenes are `record_kind='image'`.
+
 ## State
 
 | Area | Status |
