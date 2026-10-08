@@ -126,7 +126,11 @@ export async function* listDataverse(sourceId: string, base: string, opts: { gap
   const gap = opts.gapMs ?? 3_000; // gentle: UBC's Abacus blocked after ~37 one-second-spaced pages of 1,000
   // 1. Licences, through the facet.
   const f = await getJson(`${base}/api/search?q=*&type=dataset&per_page=1&show_facets=true`);
-  const labels: string[] = (f.data?.facets ?? []).flatMap((x: any) => (x.license ? x.license.labels.map((l: any) => Object.keys(l)[0]) : []));
+  // Facet labels are display names ("CC-BY 4.0"); the index uses the names in /api/licenses ("CC BY 4.0",
+  // "StatCan Open License"). Query both; a label that matches nothing just returns no rows.
+  const facetLabels: string[] = (f.data?.facets ?? []).flatMap((x: any) => (x.license ? x.license.labels.map((l: any) => Object.keys(l)[0]) : []));
+  const named: string[] = await getJson(`${base}/api/licenses`).then((j) => (j.data ?? []).map((l: any) => l.name)).catch(() => []);
+  const labels = [...new Set([...named, ...facetLabels])];
   const licence = new Map<string, string>();
   for (const l of labels) {
     for (const d of await pageAll(base, `type=dataset&fq=license:${encodeURIComponent(`"${l}"`)}`, undefined, gap)) licence.set(d.global_id, l);

@@ -15,34 +15,20 @@ Read, in order: `CLAUDE.md` (conventions, review rules, three parts), `docs/PLAN
 
 Harvest shards (`data/harvest/<source>/` with mapped and **raw** platform records) are local and gitignored, and are **not** in the published DB. They exist on the machine that ran the harvest. Anywhere else, re-run `pnpm harvest` (minutes) before anything that needs raw records.
 
-## Resume here (2026-10-06, laptop closed mid-run)
-
-Two jobs were interrupted; both resume where they stopped:
-
-```bash
-pnpm harvest --platform dataverse --only dataverse:borealisdata.ca   # pages cached in data/harvest/cache/borealisdata.ca (168 of ~640 done)
-pnpm harvest:load --only dataverse:borealisdata.ca
-pnpm describe --parallel 16 && pnpm describe --load                   # ~1,100 new layers left; done keys are skipped
-pnpm digest --out reports/digest-$(date +%F).md && pnpm charts
-```
-
-Then refresh `reports/LANDSCAPE.md` and the README table from the new digest: every platform is now harvested (Socrata, Dataverse, Opendatasoft, GeoNetwork, ArcGIS Server, StatCan WDS, Valet, GeoCore, FRDR, bespoke APIs, web listings), plus the describe pass (28,212 resources: columns, row counts, samples, edit dates). The report still describes CKAN and Hub only. Commit, push, `pnpm db:publish`.
-
-Decisions this session: Abacus (UBC) is flagged bot-blocked (`sources.status='blocked'`, observation `api_blocked`), not harvested. StatCan keeps the Statistics Canada Open Licence; Valet and Red Deer have no licence in their APIs and stay blank. GeoCore's 95,750 Sentinel-1/RADARSAT scenes are `record_kind='image'`.
-
 ## State
 
 | Area | Status |
 |---|---|
 | Directory sync | Done. 253 orgs, 104,617 reported datasets. |
 | Probe | Done (2026-10-04, partial re-probes since). Fingerprints: CKAN, ArcGIS Hub, ArcGIS Server, Socrata, Opendatasoft, Dataverse, GeoNetwork, DCAT. |
-| Sources | 238 orgs have an identified or harvestable source; 2 are blocked (Hamilton, Quinte West); 1 is not a data source (CFL); 12 have a dead link or no URL. `needs_human` and `decision` queues are empty. |
+| Sources | 236 orgs have an identified source; 3 are blocked (Hamilton, Quinte West, Abacus); 1 is not a data source (CFL); 13 have a dead or wrong link. `needs_human` and `decision` queues are empty. |
 | Harvest: CKAN | 12 portals: 149,366 records, 101,484 unique (CanWIN mirrors open.canada.ca; handled via `recipe.mirrors`), 645,852 resources. |
-| Harvest: ArcGIS Hub | 132 sites (Nanaimo added 2026-10-06): 28,025 items, 25,437 unique (items repeated across sites are deduped by global item id). |
-| Harvest: others | Not started: Socrata (7 sources), Dataverse (2), Opendatasoft (2), GeoNetwork (1), DCAT (4), ArcGIS Server (4), known APIs (StatCan WDS, BoC Valet, GeoCore, FRDR OAI-PMH, Red Deer), web listings (≈13 with recipes). |
+| Harvest: ArcGIS Hub | 136 sites: 28,448 items, 25,860 unique (items repeated across sites are deduped by global item id). |
+| Harvest: others | Done (2026-10-06/08): Borealis 24,661 (591,742 files), GeoCore 103,387 (95,750 radar scenes = images; 7,583 mirror open.canada.ca), StatCan WDS 8,270, Socrata 5,564 (6 portals), Valet 2,549, web listings 2,247 (18), GeoNetwork 1,713, FRDR 860, bespoke APIs 816, ArcGIS Server 725 layers, Opendatasoft 226. Total 270,779 unique records, 109,724 data. Abacus not harvested (bot-blocked). |
+| Describe | `pnpm describe`: 14,984 DataStore tables (86.4% readable) and 14,237 Esri layers (89.1%) in `resource_describe`; 769M rows. Results file `data/describe/results.jsonl` (local, resumable). |
 | AI readiness | Views `v_dataset_readiness`, `v_source_readiness` (shares over data records only, counts by kind); columns `licence_class`, `record_kind` (data, document, app, image, inventory), `best_tier`, `duplicate_of`, `extras`. |
-| Findings | 97 (`pnpm note --list`). |
-| Landscape report | `reports/LANDSCAPE.md` refreshed from `reports/digest-2026-10-06.md`, with dataset-level sections and SVG charts (`pnpm charts` → `reports/charts/`). README table and badge match. |
+| Findings | 112 (`pnpm note --list`). |
+| Landscape report | `reports/LANDSCAPE.md` from `reports/digest-2026-10-08.md`: all platforms, describe pass, 10 SVG charts (`pnpm charts`). README table and badge match. |
 | Serve (connectors, MCP) | Not started. |
 | Steward (maintenance agent) | Not started; sessions following `CLAUDE.md` do its job. |
 
@@ -57,18 +43,11 @@ Headline numbers (2026-10-06, unique data records; images, documents, apps and i
 
 ## Next steps, in order
 
-1. **Harvest the remaining platforms.** For each new lister, follow the pattern used for ArcGIS Hub:
-   - write `src/connectors/list/<platform>.ts`, mapping to the same `datasets`/`resources` columns and keeping the raw record;
-   - **validate on 3–6 sources first** (paging stability, duplicates, field coverage, licence and record-kind mapping), then run all;
-   - register it in `LISTERS` in `src/cli/harvest.ts`; `pnpm harvest --platform <p>` then `pnpm harvest:load`;
-   - record findings.
-
-   Suggested order: Socrata (Discovery API `api/catalog/v1`), Dataverse (Search API or OAI-PMH; robots.txt decided: documented APIs are used), Opendatasoft (Explore v2.1), GeoNetwork (CSW `GetRecords`), DCAT `data.json`, then `arcgis_rest` (folder-restricted), the known APIs (StatCan WDS, Valet, GeoCore, FRDR, Red Deer, Brandon, NatureCounts and CONP metadata only), and `web_listing` from recipes (18 sources; Nunavut needs a browser fetcher; Metrolinx links are in the page's embedded JSON).
-2. **Theme normalization**: a `theme_map` table from portal themes to one shared list (for example the DCAT-AP data themes), plus classification of untagged records. Enables "readiness by theme".
-3. **Resource-level checks** (sample): link health (HEAD), real content type, DataStore staleness, Hub download behaviour (HTTP 202 then poll).
-4. **Probe items**: re-check the 12 orgs with no source and the 15 web-listing orgs using the Hub `collections/all` fallback (Nanaimo was missed this way; small crawl, ask first). Then 11 dead links, 13 platform mismatches, 2 data errors (Calgary no URL; Shawinigan wrong URL), 3 blockers (Canadian Space Agency TLS, Hamilton Cloudflare challenge on its Hub API, Quinte West broken Hub catalogue).
-5. **Browser fetcher** for sources behind a bot challenge or built in the browser (Nunavut Bureau of Statistics behind Cloudflare; Brandon and Metrolinx worked around via API and embedded JSON).
-6. **Serve** (Part 2): query connectors and the MCP server. Design in `docs/PLAN.md` ("Connectors", "MCP surface").
+1. **Theme normalization**: a `theme_map` table from portal themes to one shared list (for example the DCAT-AP data themes), plus classification of untagged records. Enables "readiness by theme".
+2. **Resource-level checks** (sample): link health (HEAD), real content type, DataStore staleness, Hub download behaviour (HTTP 202 then poll).
+3. **Probe items**: re-check the 13 orgs with no source and the 15 web-listing orgs with the Hub `collections/all` fallback (Nanaimo and four 'DCAT' sources were missed this way; small crawl, ask first). Find Campbell River's own portal (lead in its data_error item). Then 11 dead links, 8 platform mismatches (North Vancouver may hide a Hub), 3 data errors (Calgary no URL, Shawinigan and Campbell River wrong URL), 4 blockers (Canadian Space Agency TLS, Hamilton Cloudflare challenge, Quinte West broken Hub catalogue, Abacus bot block).
+4. **Browser fetcher** for sources behind a bot challenge or built in the browser (Nunavut Bureau of Statistics behind Cloudflare; Brandon and Metrolinx worked around via API and embedded JSON).
+5. **Serve** (Part 2): query connectors and the MCP server. Design in `docs/PLAN.md` ("Connectors", "MCP surface").
 
 ## Decisions and preferences (from Olivier)
 
@@ -88,6 +67,7 @@ Headline numbers (2026-10-06, unique data records; images, documents, apps and i
 - 2026-10-06: three-part structure documented; CKAN harvest (`pnpm harvest`, `harvest:load`, raw shards); `datasets`/`resources` with AI-readiness fields; CanWIN mirror handling; readiness views and `docs/AI-READINESS.md`; `needs_review` cleared (19 profiled; `profile-source --replaces/--scope/--parent`); ArcGIS Hub harvest (stable paging, org names, cross-site dedupe); `licence_class` and `record_kind` for all records; `db:publish` compacts the DB; 33 new findings.
 - 2026-10-06 (later): record kinds `image` (Hub image items, mostly orthophoto tiles) and `inventory` (data.ontario.ca unreleased entries); Yukon reports, access-request and PIA summaries reclassified as documents; readiness views and digest now measure data records only; landscape report refreshed with dataset-level sections; CLAUDE.md "Design stance".
 - 2026-10-06 (evening): all 13 `needs_human` items and the robots.txt decision settled with Olivier in session (no brief files; evidence gathered first by read-only agents); Nanaimo Hub found and harvested; Hub fingerprint falls back to `collections/all`; robots parser distinguishes allowlists from blanket blocks; `pnpm charts` (SVG charts in `reports/charts/`); non-open sources are indexed as metadata only.
+- 2026-10-06/08: listers for every platform (Socrata, Dataverse, Opendatasoft, GeoNetwork, ArcGIS Server per layer, StatCan WDS, Valet, GeoCore, OAI-PMH, web listings, bespoke APIs); `pnpm describe` (schema, row counts, samples, edit dates); Dataverse page cache (resumable); Abacus flagged bot-blocked; GeoCore radar scenes as images; licence fixes (Dataverse facet names, NatureCounts URL); report rewritten for all platforms with 10 charts.
 
 ## Gotchas
 

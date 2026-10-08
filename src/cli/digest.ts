@@ -106,9 +106,9 @@ h("Best resource tier per data record");
 table(await q(`select coalesce(best_tier, '(no resources)') as best_tier, count(*)::int as data_records, round(100.0 * count(*) / sum(count(*)) over (), 1) as pct
   from datasets where duplicate_of is null and record_kind = 'data' group by 1 order by 2 desc`));
 
-h("Top resource formats");
+h("Top resource formats (resources of data records)");
 table(await q(`select r.format, r.tier, count(*)::int as resources from resources r join datasets d on d.id = r.dataset_id
-  where d.duplicate_of is null group by all order by resources desc limit 15`));
+  where d.duplicate_of is null and d.record_kind = 'data' group by all order by resources desc limit 15`));
 
 h("Readiness by harvested source (unique records by kind; % of its data records)");
 table(await q(`select id as source, unique_records, data_records, document_records as documents, app_records as apps, image_records as images, inventory_records as inventory,

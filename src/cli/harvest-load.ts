@@ -33,7 +33,7 @@ await all(conn, `update datasets d set duplicate_of = m.id
     and m.source_id = (s.recipe->>'mirrors') and m.native_id = d.native_id`);
 // Classify every record, all platforms (cheap; no refetch needed when the rules change).
 await all(conn, `update datasets set licence_class = case
-    when l similar to '.*(non.?commercial|by-nc|by nc|cc-nc|\\bnc\\b).*' then 'non_commercial'
+    when l similar to '.*(non.?commercial|by-nc|by nc|cc-nc|\\bnc([^/a-z_]|$)).*' then 'non_commercial'  -- not URL paths like naturecounts.ca/nc/
     when l similar to '.*(no.?deriv|by-nd|\\bnd\\b).*' then 'no_derivatives'
     when l similar to '.*unrestricted use.*' then 'open'
     when l similar to '.*(not open|closed|other-closed|all rights reserved|restricted|access only|king.?s printer|queen.?s printer|crown copyright|^copyright|copyright [0-9]).*' then 'restricted'
